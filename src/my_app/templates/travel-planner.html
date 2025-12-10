@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>旅行计划助手</title>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        h1 {
+            margin: 0;
+            font-size: 2.5em;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"], input[type="date"], select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(102, 126, 234, 0.3);
+        }
+        .plan-result {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        .section {
+            margin-bottom: 25px;
+        }
+        .section-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+        .section-title i {
+            margin-right: 10px;
+        }
+        .weather-day {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        .attraction-item {
+            background: #f0f8e8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            position: relative;
+        }
+        
+        /* AI增强相关样式 */
+        .ai-enhanced-badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            display: inline-block;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+        }
+        
+        .ai-description {
+            position: relative;
+        }
+        
+        .source-tag {
+            font-size: 0.8em;
+            color: #667eea;
+            margin-left: 5px;
+        }
+        
+        .ai-optimized-route {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+        }
+        
+        .optimization-badge {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 3px;
+            display: inline-block;
+            margin-bottom: 10px;
+            font-size: 0.9em;
+        }
+        
+        .original-route-toggle {
+            background: #eee;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        
+        .original-route-toggle:hover {
+            background: #ddd;
+        }
+        
+        .original-route {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        
+        .ai-enhanced-tag {
+            background: #667eea;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.8em;
+            margin-left: 5px;
+        }
+        
+        .ai-suggestions {
+            background: #f0f8e8;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        
+        /* 聊天界面样式 */
+        #chat-container {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .chat-message {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 8px;
+            max-width: 85%;
+        }
+        
+        .chat-message.user {
+            align-self: flex-end;
+            background: #667eea;
+            color: white;
+            border-bottom-right-radius: 2px;
+        }
+        
+        .chat-message.ai {
+            align-self: flex-start;
+            background: #f0f0f0;
+            border-bottom-left-radius: 2px;
+        }
+        
+        .chat-message.ai.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        .message-avatar {
+            font-size: 24px;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+        
+        .message-content {
+            flex: 1;
+            overflow-wrap: break-word;
+        }
+        
+        .agent-name {
+            font-weight: bold;
+            color: #667eea;
+            margin-bottom: 5px;
+        }
+        
+        .response-text {
+            line-height: 1.5;
+        }
+        
+        .ai-tag {
+            background: #667eea;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 0.7em;
+            display: inline-block;
+            margin-top: 5px;
+        }
+        
+        /* 打字指示器 */
+        .typing-indicator {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background: #666;
+            border-radius: 50%;
+            animation: typing 1.4s infinite both;
+        }
+        
+        .typing-indicator span:nth-child(1) {
+            animation-delay: 0s;
+        }
+        
+        .typing-indicator span:nth-child(2) {
+            animation-delay: 0.2s;
+        }
+        
+        .typing-indicator span:nth-child(3) {
+            animation-delay: 0.4s;
+        }
+        
+        @keyframes typing {
+            0% {
+                transform: translateY(0);
+                opacity: 0.4;
+            }
+            50% {
+                transform: translateY(-5px);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(0);
+                opacity: 0.4;
+            }
+        }
+        .route-day {
+            background: #fff3e8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .route-spot {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        .suggestion-item {
+            background: #f8e8f8;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-bottom: 8px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #667eea;
+        }
+        .error {
+            background: #ffe8e8;
+            padding: 15px;
+            border-radius: 5px;
+            border-left: 4px solid #e74c3c;
+            color: #c0392b;
+        }
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: none;
+            background: none;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            color: #666;
+        }
+        .tab.active {
+            border-bottom: 3px solid #667eea;
+            color: #667eea;
+            font-weight: bold;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .attraction-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .attraction-card {
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 20px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .attraction-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        .attraction-name {
+            font-weight: bold;
+            font-size: 1.1em;
+            margin-bottom: 10px;
+            color: #333;
+        }
+        .attraction-rating {
+            color: #ff9800;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .btn-secondary {
+            background: #7f8c8d;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>✨ 旅行计划智能助手 ✨</h1>
+        <p>让AI为您规划完美旅程，整合天气、景点、线路和攻略信息</p>
+    </header>
+
+    <div class="container">
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('plan-tab', this)">📅 创建旅行计划</button>
+            <button class="tab" onclick="switchTab('attractions-tab', this)">🏞️ 景点查询</button>
+            <button class="tab" onclick="switchTab('chat-tab', this)">💬 智能问答</button>
+        </div>
+
+        <!-- 旅行计划选项卡 -->
+        <div id="plan-tab" class="tab-content active">
+            <form id="plan-form">
+                <div class="form-group">
+                    <label for="city">目的地城市</label>
+                    <input type="text" id="city" name="city" placeholder="例如：北京、上海、杭州" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="start-date">开始日期</label>
+                    <input type="date" id="start-date" name="start-date">
+                </div>
+                
+                <div class="form-group">
+                    <label for="days">旅行天数</label>
+                    <select id="days" name="days">
+                        <option value="1">1天</option>
+                        <option value="2">2天</option>
+                        <option value="3" selected>3天</option>
+                        <option value="4">4天</option>
+                        <option value="5">5天</option>
+                        <option value="6">6天</option>
+                        <option value="7">7天</option>
+                    </select>
+                </div>
+                
+                <button type="submit">生成旅行计划</button>
+            </form>
+
+            <div id="plan-result" class="plan-result" style="display: none;">
+                <h3 id="plan-title"></h3>
+                
+                <!-- 天气信息 -->
+                <div class="section">
+                    <div class="section-title">📅 天气预报</div>
+                    <div id="weather-forecast"></div>
+                </div>
+                
+                <!-- 景点推荐 -->
+                <div class="section">
+                    <div class="section-title">🏞️ 热门景点</div>
+                    <div id="attractions-list"></div>
+                </div>
+                
+                <!-- 行程安排 -->
+                <div class="section">
+                    <div class="section-title">🗓️ 每日行程</div>
+                    <div id="daily-routes"></div>
+                </div>
+                
+                <!-- 旅行建议 -->
+                <div class="section">
+                    <div class="section-title">💡 旅行建议</div>
+                    <div id="travel-suggestions"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 景点查询选项卡 -->
+        <div id="attractions-tab" class="tab-content">
+            <form id="attractions-form">
+                <div class="form-group">
+                    <label for="attraction-city">城市名称</label>
+                    <input type="text" id="attraction-city" name="attraction-city" placeholder="例如：北京、上海、杭州" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="attraction-limit">显示数量</label>
+                    <select id="attraction-limit" name="attraction-limit">
+                        <option value="5">5个</option>
+                        <option value="10" selected>10个</option>
+                        <option value="15">15个</option>
+                        <option value="20">20个</option>
+                    </select>
+                </div>
+                
+                <button type="submit">查询景点</button>
+            </form>
+
+            <div id="attractions-result" style="display: none;">
+                <h3 id="attractions-title"></h3>
+                <div id="attractions-grid" class="attraction-grid"></div>
+            </div>
+        </div>
+
+        <!-- 智能问答选项卡 -->
+        <div id="chat-tab" class="tab-content">
+            <div style="background: #f9f9f9; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+                <p><strong>💡 使用提示：</strong></p>
+                <ul>
+                    <li>查询天气：例如 "北京明天天气如何？"</li>
+                    <li>查询景点：例如 "上海有哪些好玩的景点？"</li>
+                    <li>创建旅行计划：例如 "帮我规划3天北京旅游行程"</li>
+                    <li>查询攻略：例如 "杭州旅游攻略有哪些？"</li>
+                </ul>
+            </div>
+            
+            <div id="chat-container" style="border: 1px solid #ddd; border-radius: 8px; height: 400px; overflow-y: auto; padding: 20px; margin-bottom: 20px;"></div>
+            
+            <form id="chat-form">
+                <input type="text" id="chat-query" name="chat-query" placeholder="请输入您的问题..." style="width: calc(100% - 100px); display: inline-block;">
+                <button type="submit" style="width: 80px; margin-left: 10px;">发送</button>
+            </form>
+        </div>
+
+        <div id="loading" class="loading" style="display: none;">
+            <div style="text-align: center; padding: 20px;">
+                <h3>正在生成旅行计划</h3>
+                <div style="margin: 20px 0; width: 100%; max-width: 400px; margin-left: auto; margin-right: auto;">
+                    <div style="width: 100%; height: 10px; background-color: #e0e0e0; border-radius: 5px; overflow: hidden;">
+                        <div id="progress-bar" style="width: 0%; height: 100%; background-color: #4CAF50; transition: width 0.3s ease;"></div>
+                    </div>
+                    <p id="progress-status" style="text-align: center; margin-top: 10px; font-size: 14px; color: #666;">初始化...</p>
+                    <p id="progress-time" style="text-align: center; margin-top: 5px; font-size: 12px; color: #999;">预计剩余时间: 计算中...</p>
+                </div>
+                <div style="font-size: 12px; color: #888;">
+                    <p>为您提供最佳旅行体验，我们正在进行以下工作：</p>
+                    <ul style="text-align: left; max-width: 400px; margin: 10px auto;">
+                        <li id="step-1" style="color: #4CAF50;">✓ 分析目的地信息</li>
+                        <li id="step-2" style="color: #999;">□ 获取天气数据</li>
+                        <li id="step-3" style="color: #999;">□ 筛选热门景点</li>
+                        <li id="step-4" style="color: #999;">□ 规划行程路线</li>
+                        <li id="step-5" style="color: #999;">□ 生成旅行建议</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 切换选项卡
+        function switchTab(tabId, tabButton) {
+            // 隐藏所有内容
+            const tabContents = document.querySelectorAll('.tab-content');
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // 移除所有标签的活动状态
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // 显示选中的内容和活动标签
+            document.getElementById(tabId).classList.add('active');
+            tabButton.classList.add('active');
+        }
+
+        // 生成旅行计划
+        document.getElementById('plan-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const city = document.getElementById('city').value;
+            const startDate = document.getElementById('start-date').value;
+            const days = document.getElementById('days').value;
+            
+            // 表单验证
+            if (!city || !startDate || !days || parseInt(days) <= 0 || parseInt(days) > 7) {
+                const errorContainer = document.getElementById('error-message') || document.createElement('div');
+                errorContainer.textContent = '请填写所有必填字段，且天数必须在1-7天之间';
+                errorContainer.style.display = 'block';
+                errorContainer.className = 'error';
+                // 确保错误信息显示在适当位置
+                const loadingElement = document.getElementById('loading');
+                if (!document.getElementById('error-message')) {
+                    loadingElement.parentNode.insertBefore(errorContainer, loadingElement.nextSibling);
+                }
+                return;
+            }
+            
+            // 重置状态
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('plan-result').style.display = 'none';
+            const errorElement = document.getElementById('error-message');
+            if (errorElement) {
+                errorElement.style.display = 'none';
+            }
+            
+            console.log('开始生成旅行计划请求', { city, startDate, days });
+            
+            // 初始化进度更新
+            let progress = 0;
+            let startTime = new Date();
+            const steps = ['分析目的地信息', '获取天气数据', '筛选热门景点', '规划行程路线', '生成旅行建议'];
+            let currentStep = 0;
+            
+            // 模拟进度更新函数
+            const updateProgress = () => {
+                const elapsedTime = (new Date() - startTime) / 1000; // 秒
+                
+                // 根据已用时间模拟进度，确保在请求完成前达到接近100%但不超过100%
+                if (progress < 90) {
+                    // 非线性进度增长，开始快一点，后面慢一点
+                    const progressIncrement = Math.max(1, (90 - progress) / 20);
+                    progress += progressIncrement;
+                    
+                    // 更新进度条
+                    document.getElementById('progress-bar').style.width = progress + '%';
+                    
+                    // 更新当前步骤和状态
+                    const stepIndex = Math.floor((progress / 90) * steps.length);
+                    if (stepIndex > currentStep && stepIndex < steps.length) {
+                        currentStep = stepIndex;
+                        
+                        // 更新步骤状态显示 (HTML使用1索引，需要+1)
+                        const htmlStepId = currentStep + 1;
+                        if (htmlStepId > 1 && htmlStepId <= 5) { // 只更新步骤2-5
+                            document.getElementById(`step-${htmlStepId}`).innerHTML = '✓ ' + steps[currentStep];
+                            document.getElementById(`step-${htmlStepId}`).style.color = '#4CAF50';
+                        }
+                    }
+                    
+                    // 更新状态文本
+                    document.getElementById('progress-status').textContent = `正在${steps[Math.min(currentStep, steps.length - 1)]}...`;
+                    
+                    // 估算剩余时间（基于当前进度和已用时间）
+                    const estimatedTotalTime = (elapsedTime / progress) * 100;
+                    const remainingTime = Math.max(0, estimatedTotalTime - elapsedTime);
+                    const minutes = Math.floor(remainingTime / 60);
+                    const seconds = Math.floor(remainingTime % 60);
+                    document.getElementById('progress-time').textContent = 
+                        `预计剩余时间: ${minutes}分${seconds}秒`;
+                }
+            };
+            
+            // 每秒更新一次进度
+            const progressInterval = setInterval(updateProgress, 1000);
+            
+            // 创建中止控制器用于超时控制
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => {
+                console.log('请求超时，中止请求');
+                controller.abort();
+            }, 600000); // 600秒超时 (延长时间以确保API请求有足够时间完成)
+            
+            // 发送请求，添加超时控制
+            fetch('/api/travel-plan', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    city: city,
+                    start_date: startDate,
+                    days: days
+                }),
+                signal: controller.signal // 添加中止信号
+            })
+            .then(response => {
+                clearTimeout(timeoutId); // 清除超时定时器
+                clearInterval(progressInterval); // 清除进度更新计时器
+                
+                // 完成进度显示
+                document.getElementById('progress-bar').style.width = '100%';
+                document.getElementById('progress-status').textContent = '处理完成！';
+                document.getElementById('progress-time').textContent = '正在准备结果...';
+                
+                console.log('收到响应，状态码:', response.status);
+                
+                if (!response.ok) {
+                    throw new Error(`API错误: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                document.getElementById('loading').style.display = 'none';
+                console.log('API响应数据:', data);
+                
+                if (data.status === 'success') {
+                    // 显示结果
+                    const planResult = document.getElementById('plan-result');
+                    planResult.style.display = 'block';
+                    
+                    // 添加AI增强标记
+                    let planTitle = `${city} ${days}天旅行计划`;
+                    if (data.enhanced_by_ai) {
+                        planTitle += ' <span style="color: #667eea;">(AI智能增强)</span>';
+                    }
+                    document.getElementById('plan-title').innerHTML = planTitle;
+                    
+                    // 填充天气信息 - 添加容错处理，确保显示正常
+                    const weatherContainer = document.getElementById('weather-forecast');
+                    weatherContainer.innerHTML = '';
+                    if (data.sections.weather_forecast) {
+                        data.sections.weather_forecast.forEach(day => {
+                            const weatherDay = document.createElement('div');
+                            weatherDay.className = 'weather-day';
+                            // 添加容错处理，确保所有字段都有默认值
+                            const dayName = day.day || '未知';
+                            const dateStr = day.date || '';
+                            const weather = day.weather || '晴';
+                            const tempMin = day.temp_min || '20';
+                            const tempMax = day.temp_max || '28';
+                            const suggestion = day.suggestion || '适合出游，记得做好防晒';
+                            const aiSuggestion = day.ai_suggestion || '';
+                            
+                            weatherDay.innerHTML = `
+                                <strong>${dayName} (${dateStr})</strong><br>
+                                天气: ${weather}<br>
+                                温度: ${tempMin} ~ ${tempMax}<br>
+                                建议: ${suggestion}
+                                ${aiSuggestion ? `<br><span style="color: #667eea;">AI建议: ${aiSuggestion}</span>` : ''}
+                            `;
+                            weatherContainer.appendChild(weatherDay);
+                        });
+                    }
+                    
+                    // 填充景点信息 - 支持AI增强描述
+                    const attractionsContainer = document.getElementById('attractions-list');
+                    attractionsContainer.innerHTML = '';
+                    if (data.sections.attractions) {
+                        data.sections.attractions.forEach(attraction => {
+                            const attractionItem = document.createElement('div');
+                            attractionItem.className = 'attraction-item';
+                            
+                            let descriptionHTML = '';
+                            if (attraction.ai_description) {
+                                descriptionHTML = `描述: ${attraction.ai_description}<br>
+                                <small style="color: #667eea;">${attraction.description_source || 'AI增强描述'}</small>`;
+                            } else {
+                                descriptionHTML = `描述: ${attraction.description}`;
+                            }
+                            
+                            attractionItem.innerHTML = `
+                                <strong>${attraction.name}</strong>${attraction.enhanced_by_ai ? ' <small style="color: #667eea;">(AI增强)</small>' : ''}<br>
+                                评分: ${attraction.rating}<br>
+                                ${descriptionHTML}
+                            `;
+                            attractionsContainer.appendChild(attractionItem);
+                        });
+                    }
+                    
+                    // 填充行程安排 - 支持AI优化路线
+                    const routesContainer = document.getElementById('daily-routes');
+                    routesContainer.innerHTML = '';
+                    if (data.sections.routes) {
+                        if (data.sections.routes.optimized_by_ai) {
+                            // 显示AI优化路线
+                            const aiRouteContainer = document.createElement('div');
+                            aiRouteContainer.className = 'route-day';
+                            aiRouteContainer.innerHTML = `
+                                <div style="background: #e8f4f8; padding: 10px; border-radius: 5px; margin-bottom: 15px;">
+                                    <strong>AI优化路线</strong> <small style="color: #667eea;">${data.sections.routes.source}</small>
+                                </div>
+                                <div style="white-space: pre-line;">${data.sections.routes.optimized_routes}</div>
+                            `;
+                            routesContainer.appendChild(aiRouteContainer);
+                            
+                            // 如果有原始路线，添加切换按钮
+                            if (data.sections.original_routes) {
+                                const toggleBtn = document.createElement('button');
+                                toggleBtn.textContent = '查看原始路线';
+                                toggleBtn.onclick = function() {
+                                    const originalRoutesDiv = document.getElementById('original-routes');
+                                    if (originalRoutesDiv.style.display === 'none' || !originalRoutesDiv.style.display) {
+                                        originalRoutesDiv.style.display = 'block';
+                                        this.textContent = '隐藏原始路线';
+                                    } else {
+                                        originalRoutesDiv.style.display = 'none';
+                                        this.textContent = '查看原始路线';
+                                    }
+                                };
+                                routesContainer.appendChild(toggleBtn);
+                                
+                                const originalRoutesDiv = document.createElement('div');
+                                originalRoutesDiv.id = 'original-routes';
+                                originalRoutesDiv.style.display = 'none';
+                                originalRoutesDiv.style.marginTop = '15px';
+                                
+                                data.sections.original_routes.forEach(route => {
+                                    const routeDay = document.createElement('div');
+                                    routeDay.className = 'route-day';
+                                    routeDay.innerHTML = `<strong>${route.title}</strong>`;
+                                    
+                                    const spotsList = document.createElement('div');
+                                    spotsList.className = 'route-spot';
+                                    
+                                    route.attractions.forEach(spot => {
+                                        const spotItem = document.createElement('div');
+                                        spotItem.innerHTML = `<strong>${spot.time}</strong> - ${spot.name}`;
+                                        spotsList.appendChild(spotItem);
+                                    });
+                                    
+                                    routeDay.appendChild(spotsList);
+                                    originalRoutesDiv.appendChild(routeDay);
+                                });
+                                
+                                routesContainer.appendChild(originalRoutesDiv);
+                            }
+                        } else {
+                            // 显示常规路线
+                            data.sections.routes.forEach(route => {
+                                const routeDay = document.createElement('div');
+                                routeDay.className = 'route-day';
+                                routeDay.innerHTML = `<strong>${route.title}</strong>`;
+                                
+                                const spotsList = document.createElement('div');
+                                spotsList.className = 'route-spot';
+                                
+                                route.attractions.forEach(spot => {
+                                    const spotItem = document.createElement('div');
+                                    spotItem.innerHTML = `<strong>${spot.time}</strong> - ${spot.name}`;
+                                    spotsList.appendChild(spotItem);
+                                });
+                                
+                                routeDay.appendChild(spotsList);
+                                routesContainer.appendChild(routeDay);
+                            });
+                        }
+                    }
+                    
+                    // 显示AI综合建议
+                    if (data.sections.ai_comprehensive_suggestions) {
+                        const aiSuggestionsContainer = document.createElement('div');
+                        aiSuggestionsContainer.className = 'section';
+                        aiSuggestionsContainer.innerHTML = `
+                            <div class="section-title">🤖 AI智能旅行建议</div>
+                            <div style="background: #f0f8e8; padding: 15px; border-radius: 5px;">
+                                <div style="white-space: pre-line;">${data.sections.ai_comprehensive_suggestions.content}</div>
+                                <small style="color: #667eea;">${data.sections.ai_comprehensive_suggestions.source}</small>
+                            </div>
+                        `;
+                        
+                        // 插入到旅行建议之前
+                        const suggestionsSection = document.querySelector('.section:has(#travel-suggestions)');
+                        suggestionsSection.parentNode.insertBefore(aiSuggestionsContainer, suggestionsSection);
+                    }
+                    
+                    // 填充旅行建议
+                    const suggestionsContainer = document.getElementById('travel-suggestions');
+                    suggestionsContainer.innerHTML = '';
+                    if (data.sections.suggestions) {
+                        data.sections.suggestions.forEach(suggestion => {
+                            const suggestionItem = document.createElement('div');
+                            suggestionItem.className = 'suggestion-item';
+                            suggestionItem.innerHTML = `<strong>${suggestion.type}</strong>: ${suggestion.content}`;
+                            suggestionsContainer.appendChild(suggestionItem);
+                        });
+                    }
+                } else {
+                    // 显示错误
+                    document.getElementById('plan-result').style.display = 'block';
+                    document.getElementById('plan-result').innerHTML = `
+                        <div class="error">
+                            <strong>错误：</strong>${data.message || '生成旅行计划失败'}
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                clearTimeout(timeoutId); // 确保清除超时定时器
+                clearInterval(progressInterval); // 清除进度更新计时器
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('plan-result').style.display = 'block';
+                
+                console.error('请求错误:', error);
+                
+                // 根据错误类型提供更具体的错误信息
+                let errorMessage = '生成旅行计划时发生错误，请稍后重试';
+                let errorDetails = '';
+                
+                if (error.name === 'AbortError') {
+                    errorMessage = '请求超时';
+                    errorDetails = '旅行计划生成需要较长时间，系统已将超时时间延长至60秒。请稍后重试，或尝试选择较短的旅行天数（1-3天）以加快生成速度。'
+                } else if (error.message && error.message.includes('ERR_CONNECTION_RESET')) {
+                    errorMessage = '服务器连接重置';
+                    errorDetails = '服务器暂时不可用，请稍后再试';
+                } else if (error.message && error.message.includes('NetworkError')) {
+                    errorMessage = '网络连接问题';
+                    errorDetails = '请检查您的网络连接后重试';
+                } else if (error.message) {
+                    // 显示API错误信息，但避免暴露过多技术细节
+                    errorMessage = error.message.replace(/API错误:\s*\d+/i, '服务器错误');
+                }
+                
+                // 构建错误提示HTML
+                const errorHtml = `
+                    <div class="error" style="padding: 15px; background: #ffebee; border-radius: 5px; color: #c62828;">
+                        <strong>错误：</strong>${errorMessage}<br>
+                        ${errorDetails ? `<small>${errorDetails}</small>` : ''}
+                        <div style="margin-top: 10px; font-size: 0.9em;">
+                            <strong>提示：</strong>请确保输入了有效的城市名称和日期，旅行天数建议控制在1-3天内以获得更好的体验。
+                        </div>
+                    </div>
+                `;
+                
+                document.getElementById('plan-result').innerHTML = errorHtml;
+            });
+        });
+
+        // 查询景点
+        document.getElementById('attractions-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const city = document.getElementById('attraction-city').value;
+            const limit = document.getElementById('attraction-limit').value;
+            
+            // 显示加载状态
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('attractions-result').style.display = 'none';
+            
+            // 发送请求
+            fetch(`/api/attractions?city=${encodeURIComponent(city)}&limit=${limit}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loading').style.display = 'none';
+                
+                if (data.status === 'success') {
+                    // 显示结果
+                    document.getElementById('attractions-result').style.display = 'block';
+                    document.getElementById('attractions-title').textContent = `${city}的热门景点`;
+                    
+                    // 填充景点网格
+                    const grid = document.getElementById('attractions-grid');
+                    grid.innerHTML = '';
+                    
+                    data.attractions.forEach(attraction => {
+                        const card = document.createElement('div');
+                        card.className = 'attraction-card';
+                        card.innerHTML = `
+                            <div class="attraction-name">${attraction.name}</div>
+                            <div class="attraction-rating">⭐ ${attraction.rating}</div>
+                            <div>${attraction.description}</div>
+                        `;
+                        grid.appendChild(card);
+                    });
+                } else {
+                    document.getElementById('attractions-result').style.display = 'block';
+                    document.getElementById('attractions-result').innerHTML = `
+                        <div class="error">
+                            <strong>错误：</strong>${data.message || '查询景点失败'}
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('attractions-result').style.display = 'block';
+                document.getElementById('attractions-result').innerHTML = `
+                    <div class="error">
+                        <strong>错误：</strong>网络错误，请稍后再试
+                    </div>
+                `;
+            });
+        });
+
+        // 智能旅行助手 - 使用多智能体系统
+        document.getElementById('chat-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const query = document.getElementById('chat-query').value;
+            if (!query.trim()) return;
+            
+            const chatContainer = document.getElementById('chat-container');
+            const userQuery = query.trim();
+            
+            // 添加用户消息（带样式）
+            const userMessage = document.createElement('div');
+            userMessage.className = 'chat-message user';
+            userMessage.innerHTML = `
+                <div class="message-avatar">👤</div>
+                <div class="message-content">${userQuery}</div>
+            `;
+            chatContainer.appendChild(userMessage);
+            
+            // 清空输入框
+            document.getElementById('chat-query').value = '';
+            
+            // 添加AI思考中状态
+            const typingMessage = document.createElement('div');
+            typingMessage.className = 'chat-message ai typing';
+            typingMessage.innerHTML = `
+                <div class="message-avatar">🤖</div>
+                <div class="message-content">
+                    <div class="typing-indicator">
+                        <span></span><span></span><span></span>
+                    </div>
+                </div>
+            `;
+            chatContainer.appendChild(typingMessage);
+            
+            // 滚动到底部
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+            
+            // 获取当前页面上下文（如城市、天数等）
+            const context = {};
+            if (document.getElementById('city')) {
+                context.city = document.getElementById('city').value;
+            }
+            if (document.getElementById('days')) {
+                context.days = document.getElementById('days').value;
+            }
+            if (document.getElementById('start-date')) {
+                context.start_date = document.getElementById('start-date').value;
+            }
+            
+            // 发送请求到智能旅行助手API（多智能体系统）
+            fetch('/api/travel-assistant', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    query: userQuery, 
+                    context: context,
+                    use_multi_agent: true
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // 移除思考中状态
+                chatContainer.removeChild(typingMessage);
+                
+                // 添加AI回复（带样式）
+                const agentMessage = document.createElement('div');
+                agentMessage.className = 'chat-message ai';
+                
+                // 确定使用哪个智能体的回复
+                let responseContent = data.content || '抱歉，我无法生成回复。';
+                let agentName = '智能旅行助手';
+                let agentIcon = '🤖';
+                
+                // 根据不同的回复来源显示不同的标识
+                if (data.agent_source === 'tourism_agent') {
+                    agentName = '旅游顾问';
+                    agentIcon = '🧳';
+                } else if (data.agent_source === 'travel_planner_agent') {
+                    agentName = '旅行规划师';
+                    agentIcon = '🗓️';
+                }
+                
+                // 将换行符转换为<br>
+                const formattedContent = responseContent.replace(/\n/g, '<br>');
+                
+                agentMessage.innerHTML = `
+                    <div class="message-avatar">${agentIcon}</div>
+                    <div class="message-content">
+                        <div class="agent-name">${agentName}</div>
+                        <div class="response-text">${formattedContent}</div>
+                        ${data.generated_by_ai ? '<div class="ai-tag">AI生成</div>' : ''}
+                    </div>
+                `;
+                
+                chatContainer.appendChild(agentMessage);
+                
+                // 滚动到底部
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            })
+            .catch(error => {
+                // 移除思考中状态
+                chatContainer.removeChild(typingMessage);
+                
+                // 显示错误消息
+                const errorMessage = document.createElement('div');
+                errorMessage.className = 'chat-message ai error';
+                errorMessage.innerHTML = `
+                    <div class="message-avatar">🤖</div>
+                    <div class="message-content">
+                        <div class="agent-name">智能旅行助手</div>
+                        <div class="response-text">抱歉，请求失败，请稍后再试。</div>
+                    </div>
+                `;
+                chatContainer.appendChild(errorMessage);
+                
+                // 滚动到底部
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            });
+        });
+    </script>
+</body>
+</html>

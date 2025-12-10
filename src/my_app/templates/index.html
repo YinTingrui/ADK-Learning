@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能旅行助手</title>
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 40px;
+            margin-top: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 40px;
+            font-size: 2.5em;
+        }
+        .intro {
+            text-align: center;
+            margin-bottom: 60px;
+            font-size: 1.2em;
+            color: #7f8c8d;
+        }
+        .buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 40px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            padding: 15px 25px;
+            border: none;
+            border-radius: 30px;
+            font-size: 16px;
+            font-weight: bold;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 160px;
+            justify-content: center;
+        }
+        .btn-time {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            color: #2c3e50;
+        }
+        .btn-weather {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+        }
+        .btn-travel {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+        }
+        .btn-attractions {
+            background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+            color: #2c3e50;
+        }
+        .btn-chat {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+        }
+        .feature-boxes {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 20px;
+            margin-top: 60px;
+        }
+        .feature-box {
+            background: #f8f9fa;
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .feature-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .feature-box i {
+            font-size: 2.5em;
+            margin-bottom: 15px;
+            color: #3498db;
+        }
+        .feature-box h3 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 60px;
+            color: #7f8c8d;
+            font-size: 0.9em;
+        }
+        @media (max-width: 1024px) {
+            .feature-boxes {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            .feature-boxes {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            .buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+            .btn {
+                width: 100%;
+                max-width: 300px;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-route"></i> 智能旅行助手</h1>
+        <p class="intro">集成多智能体系统，提供智能旅行规划、景点查询和智能问答服务</p>
+        
+        <div class="feature-boxes">
+            <div class="feature-box">
+                <i class="fas fa-clock"></i>
+                <h3>当地时间</h3>
+                <p>查询全球任意城市的当前本地时间，轻松了解时差</p>
+            </div>
+            <div class="feature-box">
+                <i class="fas fa-cloud-sun"></i>
+                <h3>天气查询</h3>
+                <p>获取全球任意城市的实时天气和天气预报，出行必备</p>
+            </div>
+            <div class="feature-box">
+                <i class="fas fa-route"></i>
+                <h3>旅行计划</h3>
+                <p>智能规划您的旅行行程，整合天气、景点、线路和攻略信息</p>
+            </div>
+            <div class="feature-box">
+                <i class="fas fa-map-marked-alt"></i>
+                <h3>景点查询</h3>
+                <p>获取热门景点信息，包括评分、描述等详细内容</p>
+            </div>
+            <div class="feature-box">
+                <i class="fas fa-robot"></i>
+                <h3>智能问答</h3>
+                <p>通过自然语言对话方式查询旅行相关信息，智能便捷</p>
+            </div>
+        </div>
+        
+        <div class="buttons">
+            <a href="/time_query" class="btn btn-time"><i class="fas fa-clock"></i> 查询时间</a>
+            <a href="/weather" class="btn btn-weather"><i class="fas fa-cloud-sun"></i> 天气查询</a>
+            <a href="/travel_plan" class="btn btn-travel"><i class="fas fa-calendar-plus"></i> 创建旅行计划</a>
+            <a href="/attractions" class="btn btn-attractions"><i class="fas fa-map-marked-alt"></i> 景点查询</a>
+            <a href="/travel_assistant" class="btn btn-chat"><i class="fas fa-comment-dots"></i> 智能问答</a>
+        </div>
+        
+        <div class="footer">
+            <p>© 2025 智能旅行助手 | 基于Google ADK构建</p>
+        </div>
+    </div>
+</body>
+</html>

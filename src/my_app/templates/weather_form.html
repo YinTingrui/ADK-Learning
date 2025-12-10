@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天气查询</title>
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 40px;
+            margin-top: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+        }
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 10px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: #555;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            transition: border-color 0.3s ease;
+        }
+        input[type="text"]:focus {
+            border-color: #4facfe;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(79, 172, 254, 0.1);
+        }
+        .options-group {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .option {
+            flex: 1;
+            min-width: 200px;
+        }
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+        }
+        .btn-submit {
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-submit:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(79, 172, 254, 0.4);
+        }
+        .back-link {
+            text-align: center;
+            margin-top: 20px;
+        }
+        .back-link a {
+            color: #4facfe;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .back-link a:hover {
+            text-decoration: underline;
+        }
+        .tips {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 25px;
+            color: #856404;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            .form-container {
+                padding: 20px;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-cloud-sun"></i> 天气查询</h1>
+        
+        <div class="form-container">
+            <div class="tips">
+                <p><i class="fas fa-lightbulb"></i> 提示：请输入城市名称（如：北京、New York、Paris），系统将自动识别并显示该城市的天气信息。</p>
+            </div>
+            
+            <form action="/weather" method="post">
+                <div class="form-group">
+                    <label for="city"><i class="fas fa-map-marker-alt"></i> 城市名称</label>
+                    <input type="text" id="city" name="city" placeholder="请输入城市名称" required autofocus>
+                </div>
+                
+                <div class="options-group">
+                    <div class="option">
+                        <label for="language"><i class="fas fa-language"></i> 显示语言</label>
+                        <select id="language" name="language">
+                            <option value="zh">中文</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+                    
+                    <div class="option">
+                        <label for="units"><i class="fas fa-balance-scale"></i> 温度单位</label>
+                        <select id="units" name="units">
+                            <option value="metric">摄氏度 (°C)</option>
+                            <option value="imperial">华氏度 (°F)</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn-submit"><i class="fas fa-search"></i> 查询天气</button>
+            </form>
+            
+            <div class="back-link">
+                <a href="/">返回首页</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

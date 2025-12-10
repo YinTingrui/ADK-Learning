@@ -1,0 +1,1858 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>创建旅行计划 - 智能旅行助手</title>
+    <!-- 高德地图API - 性能优化版本 -->
+    <script type="text/javascript">
+        // 地图API加载管理器 - 单例模式
+        const MapAPIManager = {
+            scriptLoaded: false,
+            scriptLoading: false,
+            loadCallbacks: [],
+            
+            loadScript(callback) {
+                if (this.scriptLoaded) {
+                    callback();
+                    return;
+                }
+                
+                this.loadCallbacks.push(callback);
+                
+                if (this.scriptLoading) {
+                    return; // 正在加载中，等待回调
+                }
+                
+                this.scriptLoading = true;
+                
+                // 使用Intersection Observer进一步优化加载时机
+                if ('IntersectionObserver' in window) {
+                    const observer = new IntersectionObserver((entries) => {
+                        if (entries[0].isIntersecting && !this.scriptLoaded) {
+                            this._loadMapScript();
+                            observer.disconnect();
+                        }
+                    });
+                    
+                    // 观察地图容器
+                    const mapContainer = document.getElementById('attractions-map');
+                    if (mapContainer) {
+                        observer.observe(mapContainer);
+                    } else {
+                        // 如果容器不存在，直接加载
+                        this._loadMapScript();
+                    }
+                } else {
+                    // 降级方案
+                    this._loadMapScript();
+                }
+            },
+            
+            _loadMapScript() {
+                const script = document.createElement('script');
+                script.type = 'text/javascript';
+                script.src = 'https://webapi.amap.com/maps?v=2.0&key={{ amap_api_key }}';
+                script.async = true;
+                script.onload = () => {
+                    this.scriptLoaded = true;
+                    this.scriptLoading = false;
+                    this._executeCallbacks();
+                };
+                script.onerror = () => {
+                    this.scriptLoading = false;
+                    console.error('高德地图API加载失败');
+                    this._executeCallbacks(new Error('地图加载失败'));
+                };
+                document.head.appendChild(script);
+            },
+            
+            _executeCallbacks(error = null) {
+                this.loadCallbacks.forEach(callback => callback(error));
+                this.loadCallbacks = [];
+            }
+        };
+        
+        // 向后兼容
+        function loadMapScript(callback) {
+            MapAPIManager.loadScript(callback);
+        }
+    </script>
+    
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 40px;
+            margin-top: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #34495e;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .plan-result {
+            margin-top: 20px;
+        }
+        .section {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        }
+        .section-title {
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        .weather-day {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .weather-day:last-child {
+            border-bottom: none;
+        }
+        .attraction-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .attraction-item:last-child {
+            border-bottom: none;
+        }
+        .route-day {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .route-day:last-child {
+            border-bottom: none;
+        }
+        .route-spot {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        .route-spot div {
+            margin-bottom: 5px;
+        }
+        .suggestion-item {
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        .suggestion-item:last-child {
+            border-bottom: none;
+        }
+        .error {
+            color: #e74c3c;
+            padding: 10px;
+            background: #ffebee;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        button[type="submit"] {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 25px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        button[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background-color: #667eea;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+        .typing-indicator span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> 返回首页</a>
+        <h1><i class="fas fa-route"></i> 智能旅行助手</h1>
+        <h2><i class="fas fa-calendar-plus"></i> 创建旅行计划</h2>
+        
+        <div class="form-container">
+            <form id="plan-form">
+                <div class="form-group">
+                    <label for="city">目的地城市</label>
+                    <input type="text" id="city" name="city" placeholder="例如：北京、上海、杭州" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="start-date">开始日期</label>
+                    <input type="date" id="start-date" name="start-date" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="days">旅行天数</label>
+                    <select id="days" name="days">
+                        <option value="1">1天</option>
+                        <option value="2">2天</option>
+                        <option value="3" selected>3天</option>
+                        <option value="4">4天</option>
+                        <option value="5">5天</option>
+                        <option value="6">6天</option>
+                        <option value="7">7天</option>
+                    </select>
+                </div>
+                
+                <button type="submit">生成旅行计划</button>
+            </form>
+
+            <div id="plan-result" class="plan-result" style="display: none;">
+                <h3 id="plan-title"></h3>
+                
+                <!-- 天气信息 -->
+                <div class="section">
+                    <div class="section-title">📅 天气预报</div>
+                    <div id="weather-forecast"></div>
+                </div>
+                
+                <!-- 景点推荐 -->
+                <div class="section">
+                    <div class="section-title">🏞️ 热门景点</div>
+                    <div id="attractions-list"></div>
+                </div>
+                
+                <!-- 行程安排 -->
+                <div class="section">
+                    <div class="section-title">🗓️ 每日行程</div>
+                    <div id="daily-routes"></div>
+                </div>
+                
+                <!-- 旅行建议 -->
+                <div class="section">
+                    <div class="section-title">💡 旅行建议</div>
+                    <div id="travel-suggestions"></div>
+                </div>
+            </div>
+
+            <div id="loading" class="loading" style="display: none;">
+                <div style="text-align: center; padding: 20px;">
+                    <h3>正在生成您的旅行计划...</h3>
+                    <div style="margin: 20px 0;">
+                        <div class="typing-indicator">
+                            <span></span><span></span><span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // 全局变量
+        let currentPlan = null;
+        let currentAttractions = [];
+        
+        // 模块化代码结构
+        const TravelPlanModule = (function() {
+            'use strict';
+            
+            // 私有变量
+            let moduleInstance = null;
+            
+            // 缓存管理器类
+            class CacheManager {
+                constructor(maxSize = 50, defaultTTL = 5 * 60 * 1000) {
+                    this.data = new Map();
+                    this.maxSize = maxSize;
+                    this.defaultTTL = defaultTTL;
+                    this.stats = {
+                        hits: 0,
+                        misses: 0,
+                        evictions: 0
+                    };
+                }
+                
+                set(key, value, ttl = this.defaultTTL) {
+                    if (this.data.size >= this.maxSize) {
+                        const firstKey = this.data.keys().next().value;
+                        this.data.delete(firstKey);
+                        this.stats.evictions++;
+                    }
+                    this.data.set(key, {
+                        value: value,
+                        expiry: Date.now() + ttl
+                    });
+                }
+                
+                get(key) {
+                    const item = this.data.get(key);
+                    if (!item) {
+                        this.stats.misses++;
+                        return null;
+                    }
+                    
+                    if (Date.now() > item.expiry) {
+                        this.data.delete(key);
+                        this.stats.misses++;
+                        return null;
+                    }
+                    
+                    this.stats.hits++;
+                    return item.value;
+                }
+                
+                clear() {
+                    this.data.clear();
+                    this.stats = { hits: 0, misses: 0, evictions: 0 };
+                }
+                
+                getStats() {
+                    return {
+                        ...this.stats,
+                        size: this.data.size,
+                        hitRate: this.stats.hits / (this.stats.hits + this.stats.misses) || 0
+                    };
+                }
+            }
+            
+            // 工具函数类
+            class Utils {
+                static debounce(func, wait) {
+                    let timeout;
+                    return function executedFunction(...args) {
+                        const later = () => {
+                            clearTimeout(timeout);
+                            func(...args);
+                        };
+                        clearTimeout(timeout);
+                        timeout = setTimeout(later, wait);
+                    };
+                }
+                
+                static throttle(func, limit) {
+                    let inThrottle;
+                    return function() {
+                        const args = arguments;
+                        const context = this;
+                        if (!inThrottle) {
+                            func.apply(context, args);
+                            inThrottle = true;
+                            setTimeout(() => inThrottle = false, limit);
+                        }
+                    };
+                }
+                
+                static formatDate(dateString) {
+                    const date = new Date(dateString);
+                    return date.toLocaleDateString('zh-CN', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                    });
+                }
+                
+                static showLoading(element, text = '加载中...') {
+                    if (element) {
+                        element.innerHTML = `<div class="loading"><i class="fas fa-spinner fa-spin"></i> ${text}</div>`;
+                    }
+                }
+                
+                static hideLoading(element) {
+                    if (element) {
+                        const loading = element.querySelector('.loading');
+                        if (loading) loading.remove();
+                    }
+                }
+            }
+            
+            // 通知模块类
+            class NotificationModule {
+                constructor() {
+                    this.container = null;
+                    this.init();
+                }
+                
+                init() {
+                    this.container = document.createElement('div');
+                    this.container.className = 'notification-container';
+                    document.body.appendChild(this.container);
+                }
+                
+                show(message, type = 'info', duration = 3000) {
+                    const notification = document.createElement('div');
+                    notification.className = `notification notification-${type}`;
+                    notification.innerHTML = `
+                        <div class="notification-content">
+                            <i class="fas fa-${this.getIcon(type)}"></i>
+                            <span>${message}</span>
+                        </div>
+                        <button class="notification-close">&times;</button>
+                    `;
+                    
+                    this.container.appendChild(notification);
+                    
+                    // 显示动画
+                    setTimeout(() => notification.classList.add('show'), 10);
+                    
+                    // 自动关闭
+                    const timeout = setTimeout(() => {
+                        this.hide(notification);
+                    }, duration);
+                    
+                    // 手动关闭
+                    notification.querySelector('.notification-close').addEventListener('click', () => {
+                        clearTimeout(timeout);
+                        this.hide(notification);
+                    });
+                }
+                
+                hide(notification) {
+                    notification.classList.remove('show');
+                    setTimeout(() => {
+                        if (notification.parentNode) {
+                            notification.parentNode.removeChild(notification);
+                        }
+                    }, 300);
+                }
+                
+                getIcon(type) {
+                    const icons = {
+                        success: 'check-circle',
+                        error: 'exclamation-circle',
+                        warning: 'exclamation-triangle',
+                        info: 'info-circle'
+                    };
+                    return icons[type] || 'info-circle';
+                }
+            }
+            
+            // 主模块类
+            class TravelPlanModule {
+                constructor() {
+                    this.cache = new CacheManager();
+                    this.utils = Utils;
+                    this.notification = new NotificationModule();
+                    this.isInitialized = false;
+                }
+                
+                init() {
+                    if (this.isInitialized) return;
+                    
+                    this.setupEventListeners();
+                    this.setupErrorHandlers();
+                    this.isInitialized = true;
+                    
+                    console.log('旅行计划模块初始化完成');
+                }
+                
+                setupEventListeners() {
+                    // 事件监听将在下面实现
+                }
+                
+                setupErrorHandlers() {
+                    // 错误处理将在下面实现
+                }
+                
+                // 其他方法将在下面实现...
+            }
+            
+            // 单例模式
+            return {
+                getInstance: function() {
+                    if (!moduleInstance) {
+                        moduleInstance = new TravelPlanModule();
+                    }
+                    return moduleInstance;
+                }
+            };
+        })();
+        
+        // 初始化模块
+        const travelModule = TravelPlanModule.getInstance();
+        
+        // 兼容原有代码的全局变量
+        let travelPlanData = null;
+        let currentCity = '';
+        let currentDays = 0;
+        let currentStartDate = '';
+        
+        // 前端缓存机制（兼容旧代码）
+        const cacheManager = TravelPlanModule.getInstance().cache;
+        
+        // 防抖函数优化（兼容旧代码）
+        function debounce(func, wait, immediate = false) {
+            return TravelPlanModule.getInstance().utils.debounce(func, wait, immediate);
+        }
+        
+        // 节流函数（兼容旧代码）
+        function throttle(func, limit) {
+            return TravelPlanModule.getInstance().utils.throttle(func, limit);
+        }
+        
+        // 添加表单提交事件监听
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('plan-form');
+            if (form) {
+                form.addEventListener('submit', function(e) {
+                    e.preventDefault(); // 阻止表单默认提交
+                    generateTravelPlan(); // 调用生成旅行计划函数
+                });
+            }
+        });
+        
+        // 全局错误处理
+        window.addEventListener('error', function(event) {
+            console.error('全局错误捕获:', event.error);
+            // 显示用户友好的错误提示
+            travelModule.notification.show('系统出现错误，请刷新页面重试', 'error');
+        });
+        
+        // 网络请求错误处理
+        window.addEventListener('unhandledrejection', function(event) {
+            console.error('未处理的Promise拒绝:', event.reason);
+            travelModule.notification.show('网络请求失败，请检查网络连接', 'error');
+        });
+        
+        // 显示旅行计划函数 - 重构版本
+        function displayTravelPlan(plan) {
+            const module = TravelPlanModule.getInstance();
+            
+            // 显示结果区域
+            const planResult = document.getElementById('plan-result');
+            planResult.style.display = 'block';
+            
+            // 设置计划标题
+            let planTitle = `${currentCity} ${currentDays}天旅行计划`;
+            if (plan.enhanced_by_ai) {
+                planTitle += ' <span style="color: #667eea;">(AI智能增强)</span>';
+            }
+            document.getElementById('plan-title').innerHTML = planTitle;
+            
+            // 使用文档片段优化DOM操作
+            const fragment = document.createDocumentFragment();
+            
+            // 填充天气信息
+            const weatherContainer = document.getElementById('weather-forecast');
+            weatherContainer.innerHTML = '';
+            if (plan.sections.weather_forecast) {
+                const weatherFragment = document.createDocumentFragment();
+                plan.sections.weather_forecast.forEach(day => {
+                    const weatherDay = document.createElement('div');
+                    weatherDay.className = 'weather-day';
+                    const dayName = day.day || '未知';
+                    const dateStr = day.date || '';
+                    const weather = day.weather || '晴';
+                    const tempMin = day.temp_min || '20';
+                    const tempMax = day.temp_max || '28';
+                    const suggestion = day.suggestion || '适合出游，记得做好防晒';
+                    
+                    weatherDay.innerHTML = `
+                        <strong>${dayName} (${dateStr})</strong><br>
+                        天气: ${weather}<br>
+                        温度: ${tempMin} ~ ${tempMax}°C<br>
+                        建议: ${suggestion}
+                    `;
+                    weatherFragment.appendChild(weatherDay);
+                });
+                weatherContainer.appendChild(weatherFragment);
+            }
+            
+            // 填充景点信息和地图
+            const attractionsContainer = document.getElementById('attractions-list');
+            attractionsContainer.innerHTML = '';
+            if (plan.sections.attractions) {
+                // 创建地图容器
+                const mapContainer = document.createElement('div');
+                mapContainer.id = 'attractions-map';
+                mapContainer.style.cssText = 'width: 100%; height: 400px; margin: 20px 0; border: 1px solid #ddd; border-radius: 8px;';
+                attractionsContainer.appendChild(mapContainer);
+                
+                // 创建景点列表容器
+                const listContainer = document.createElement('div');
+                listContainer.id = 'attractions-list-items';
+                attractionsContainer.appendChild(listContainer);
+                
+                // 使用虚拟化技术处理大量景点
+                if (plan.sections.attractions.length > 50) {
+                    renderVirtualizedAttractions(listContainer, plan.sections.attractions);
+                } else {
+                    // 填充景点列表
+                    const attractionsFragment = document.createDocumentFragment();
+                    const attractions = plan.sections.attractions;
+                    attractions.forEach((attraction, index) => {
+                        const attractionItem = document.createElement('div');
+                        attractionItem.className = 'attraction-item';
+                        attractionItem.innerHTML = `
+                            <strong>${attraction.name}</strong><br>
+                            评分: ${attraction.rating}<br>
+                            描述: ${attraction.description}
+                        `;
+                        attractionsFragment.appendChild(attractionItem);
+                    });
+                    listContainer.appendChild(attractionsFragment);
+                }
+                
+                // 初始化地图（延迟执行确保容器已渲染）
+                setTimeout(() => {
+                    initAttractionsMap(plan.sections.attractions, currentCity);
+                }, 100);
+            }
+            
+            // 填充行程安排
+            const routesContainer = document.getElementById('daily-routes');
+            routesContainer.innerHTML = '';
+            if (plan.sections.routes) {
+                const routesFragment = document.createDocumentFragment();
+                plan.sections.routes.forEach(route => {
+                    const routeDay = document.createElement('div');
+                    routeDay.className = 'route-day';
+                    routeDay.innerHTML = `<strong>${route.title}</strong>`;
+                    
+                    const spotsList = document.createElement('div');
+                    spotsList.className = 'route-spot';
+                    
+                    route.attractions.forEach(spot => {
+                        const spotItem = document.createElement('div');
+                        spotItem.innerHTML = `<strong>${spot.time}</strong> - ${spot.name}`;
+                        spotsList.appendChild(spotItem);
+                    });
+                    
+                    routeDay.appendChild(spotsList);
+                    routesFragment.appendChild(routeDay);
+                });
+                routesContainer.appendChild(routesFragment);
+            }
+            
+            // 填充旅行建议
+            const suggestionsContainer = document.getElementById('travel-suggestions');
+            suggestionsContainer.innerHTML = '';
+            if (plan.sections.suggestions) {
+                const suggestionsFragment = document.createDocumentFragment();
+                plan.sections.suggestions.forEach(suggestion => {
+                    const suggestionItem = document.createElement('div');
+                    suggestionItem.className = 'suggestion-item';
+                    suggestionItem.innerHTML = `<strong>${suggestion.type}</strong>: ${suggestion.content}`;
+                    suggestionsFragment.appendChild(suggestionItem);
+                });
+                suggestionsContainer.appendChild(suggestionsFragment);
+            }
+            
+            // 显示性能统计
+            console.log('旅行计划显示完成，缓存命中率:', module.cache.getStats().hitRate);
+        }
+        
+        // 虚拟化渲染大量景点
+        function renderVirtualizedAttractions(container, attractions) {
+            const itemHeight = 80; // 每个景点项的高度
+            const containerHeight = 400; // 容器高度
+            const visibleItems = Math.ceil(containerHeight / itemHeight);
+            
+            // 创建滚动容器
+            const scrollContainer = document.createElement('div');
+            scrollContainer.style.cssText = `height: ${containerHeight}px; overflow-y: auto; position: relative;`;
+            
+            // 创建内容占位符
+            const contentSpacer = document.createElement('div');
+            contentSpacer.style.cssText = `height: ${attractions.length * itemHeight}px;`;
+            
+            // 创建可见内容容器
+            const visibleContainer = document.createElement('div');
+            visibleContainer.style.cssText = 'position: absolute; top: 0; left: 0; right: 0;';
+            
+            scrollContainer.appendChild(contentSpacer);
+            scrollContainer.appendChild(visibleContainer);
+            container.appendChild(scrollContainer);
+            
+            // 渲染函数
+            function renderVisibleItems() {
+                const scrollTop = scrollContainer.scrollTop;
+                const startIndex = Math.floor(scrollTop / itemHeight);
+                const endIndex = Math.min(startIndex + visibleItems + 2, attractions.length); // +2 作为缓冲区
+                
+                const fragment = document.createDocumentFragment();
+                for (let i = startIndex; i < endIndex; i++) {
+                    const attraction = attractions[i];
+                    const item = document.createElement('div');
+                    item.className = 'attraction-item';
+                    item.style.cssText = `position: absolute; top: ${i * itemHeight}px; height: ${itemHeight}px;`;
+                    item.innerHTML = `
+                        <strong>${attraction.name}</strong><br>
+                        评分: ${attraction.rating}<br>
+                        描述: ${attraction.description}
+                    `;
+                    fragment.appendChild(item);
+                }
+                
+                visibleContainer.innerHTML = '';
+                visibleContainer.appendChild(fragment);
+            }
+            
+            // 初始渲染
+            renderVisibleItems();
+            
+            // 滚动事件监听（使用节流优化）
+            const module = TravelPlanModule.getInstance();
+            const throttledRender = module.utils.throttle(renderVisibleItems, 16); // 60fps
+            scrollContainer.addEventListener('scroll', throttledRender);
+        }
+        
+        // 添加动画样式
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideInRight {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            
+            .notification-close {
+                background: none;
+                border: none;
+                color: white;
+                font-size: 18px;
+                cursor: pointer;
+                margin-left: 10px;
+                padding: 0;
+                width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .notification-close:hover {
+                opacity: 0.8;
+            }
+        `;
+        document.head.appendChild(style);
+        
+        // 表单提交处理函数 - 重构版本
+        async function generateTravelPlan() {
+            const module = TravelPlanModule.getInstance();
+            const cityInput = document.getElementById('city');
+            const daysInput = document.getElementById('days');
+            const startDateInput = document.getElementById('start-date');
+            
+            // 验证输入
+            if (!cityInput.value.trim()) {
+                module.notification.show('请输入目的地城市', 'warning');
+                cityInput.focus();
+                return;
+            }
+            
+            if (!daysInput.value || daysInput.value < 1) {
+                module.notification.show('请输入有效的旅行天数', 'warning');
+                daysInput.focus();
+                return;
+            }
+            
+            if (!startDateInput.value) {
+                module.notification.show('请选择出发日期', 'warning');
+                startDateInput.focus();
+                return;
+            }
+            
+            const city = cityInput.value.trim();
+            const days = parseInt(daysInput.value);
+            const startDate = startDateInput.value;
+            
+            // 创建缓存键
+            const cacheKey = `travel_plan_${city}_${days}_${startDate}`;
+            
+            // 检查缓存
+            const cachedData = module.cache.get(cacheKey);
+            if (cachedData) {
+                console.log('使用缓存的旅行计划数据');
+                displayTravelPlan(cachedData);
+                module.notification.show('已加载缓存的旅行计划', 'info', 2000);
+                return;
+            }
+            
+            // 显示加载状态
+            const planResult = document.getElementById('plan-result');
+            module.utils.showLoading(planResult, '正在生成旅行计划...');
+            
+            try {
+                // 添加请求超时控制
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 30000); // 30秒超时
+                
+                const response = await fetch('/api/travel-plan', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        city: city,
+                        days: days,
+                        start_date: startDate
+                    }),
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    if (result.success && result.plan) {
+                        // 缓存结果
+                        module.cache.set(cacheKey, result.plan);
+                        
+                        // 显示成功通知
+                        module.notification.show('旅行计划生成成功！', 'success');
+                        
+                        // 显示结果
+                        displayTravelPlan(result.plan);
+                        
+                        // 更新全局变量
+                        travelPlanData = result.plan;
+                        currentCity = city;
+                        currentDays = days;
+                        currentStartDate = startDate;
+                        
+                        // 记录缓存统计
+                        console.log('缓存统计:', module.cache.getStats());
+                        
+                    } else {
+                        throw new Error(result.error || '生成旅行计划失败');
+                    }
+                } else {
+                    throw new Error(result.error || '服务器错误');
+                }
+                
+            } catch (error) {
+                console.error('生成旅行计划失败:', error);
+                
+                let errorMessage = '生成旅行计划失败';
+                if (error.name === 'AbortError') {
+                    errorMessage = '请求超时，请稍后重试';
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
+                
+                module.notification.show(errorMessage, 'error');
+                
+                planResult.innerHTML = `
+                    <div class="error-message">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <h3>生成失败</h3>
+                        <p>${errorMessage}</p>
+                        <button onclick="generateTravelPlan()" class="retry-btn">重试</button>
+                    </div>
+                `;
+            }
+        }
+        
+        // 获取景点坐标并初始化地图 - 优化版本
+        // 优化地图初始化函数
+        function initAttractionsMap(attractions, cityName) {
+            if (!attractions || attractions.length === 0) {
+                console.log('没有景点数据');
+                document.getElementById('attractions-map').innerHTML = '<div style="text-align: center; padding: 50px; color: #666;">暂无景点信息</div>';
+                return;
+            }
+            
+            // 使用防抖机制避免重复计算
+            if (window.mapInitTimeout) {
+                clearTimeout(window.mapInitTimeout);
+            }
+            
+            window.mapInitTimeout = setTimeout(() => {
+                try {
+                    // 过滤有效坐标数据
+                    const validAttractions = attractions.filter(attr => 
+                        attr.longitude && attr.latitude && 
+                        !isNaN(attr.longitude) && !isNaN(attr.latitude) &&
+                        Math.abs(attr.longitude) <= 180 && Math.abs(attr.latitude) <= 90
+                    );
+                    
+                    if (validAttractions.length === 0) {
+                        console.log('没有有效的景点坐标');
+                        document.getElementById('attractions-map').innerHTML = '<div style="text-align: center; padding: 50px; color: #666;">暂无景点位置信息</div>';
+                        return;
+                    }
+                    
+                    // 使用更快的算法计算中心点
+                    const bounds = validAttractions.reduce((acc, attr) => {
+                        const lng = parseFloat(attr.longitude);
+                        const lat = parseFloat(attr.latitude);
+                        return {
+                            minLng: Math.min(acc.minLng, lng),
+                            maxLng: Math.max(acc.maxLng, lng),
+                            minLat: Math.min(acc.minLat, lat),
+                            maxLat: Math.max(acc.maxLat, lat)
+                        };
+                    }, { minLng: Infinity, maxLng: -Infinity, minLat: Infinity, maxLat: -Infinity });
+                    
+                    const centerLng = (bounds.minLng + bounds.maxLng) / 2;
+                    const centerLat = (bounds.minLat + bounds.maxLat) / 2;
+                    
+                    console.log(`计算出的中心坐标: ${centerLng}, ${centerLat}`);
+                    
+                    // 根据数据量选择处理策略
+                    if (validAttractions.length > 50) {
+                        // 大量数据使用分批处理
+                        processLargeAttractionsData(validAttractions, centerLng, centerLat);
+                    } else {
+                        // 延迟加载地图API并创建地图
+                        loadMapScript((error) => {
+                            if (error) {
+                                document.getElementById('attractions-map').innerHTML = '<div style="text-align: center; padding: 50px; color: #666;">地图加载失败，请稍后重试</div>';
+                                return;
+                            }
+                            createMap(centerLng, centerLat, validAttractions);
+                        });
+                    }
+                    
+                } catch (error) {
+                    console.error('初始化地图失败:', error);
+                    document.getElementById('attractions-map').innerHTML = '<div style="text-align: center; padding: 50px; color: #666;">地图初始化失败</div>';
+                }
+            }, 150); // 增加防抖延迟到150ms
+        }
+        
+        // 处理大量景点数据
+        function processLargeAttractionsData(attractions, centerLng, centerLat) {
+            console.log(`处理大量景点数据: ${attractions.length} 个景点`);
+            
+            // 分批处理数据
+            const batchSize = 50;
+            let currentBatch = 0;
+            
+            function processBatch() {
+                const start = currentBatch * batchSize;
+                const end = Math.min(start + batchSize, attractions.length);
+                
+                if (start < attractions.length) {
+                    const batchData = attractions.slice(start, end);
+                    
+                    // 处理当前批次
+                    setTimeout(() => {
+                        console.log(`处理批次 ${currentBatch + 1}: ${start + 1}-${end}`);
+                        
+                        // 如果是第一个批次，创建地图
+                        if (currentBatch === 0) {
+                            loadMapScript((error) => {
+                                if (error) {
+                                    document.getElementById('attractions-map').innerHTML = '<div style="text-align: center; padding: 50px; color: #666;">地图加载失败，请稍后重试</div>';
+                                    return;
+                                }
+                                createMap(centerLng, centerLat, attractions);
+                            });
+                        }
+                        
+                        currentBatch++;
+                        processBatch(); // 处理下一个批次
+                    }, 50); // 每批次间隔50ms
+                }
+            }
+            
+            processBatch();
+        }
+        
+        // 创建地图函数 - 优化版本
+        function createMap(centerLng, centerLat, attractions) {
+            try {
+                // 使用requestAnimationFrame优化性能
+                requestAnimationFrame(() => {
+                    const map = new AMap.Map('attractions-map', {
+                        center: [centerLng, centerLat],
+                        zoom: 12,
+                        resizeEnable: true,
+                        // 优化地图性能
+                        animateEnable: false, // 禁用动画提高性能
+                        jogEnable: false,
+                        pitchEnable: false,
+                        rotateEnable: false
+                    });
+                    
+                    // 添加控件
+                    map.addControl(new AMap.Scale());
+                    map.addControl(new AMap.ToolBar({liteStyle: true}));
+                    
+                    // 添加地图类型切换控件
+                    addMapTypeControl(map);
+                    
+                    // 添加全屏控件
+                    addFullscreenControl(map);
+                    
+                    // 批量添加景点标记（性能优化）
+                    const attractionsWithCoords = attractions.filter(attr => attr.longitude && attr.latitude);
+                    
+                    if (attractionsWithCoords.length === 0) {
+                        document.getElementById('attractions-map').innerHTML = '<div style="text-align: center; padding: 50px; color: #666;">暂无景点位置信息</div>';
+                        return;
+                    }
+                    
+                    // 使用MarkerClusterer进行聚合显示（如果景点很多）
+                    if (attractionsWithCoords.length > 20) {
+                        createClusteredMarkers(map, attractionsWithCoords);
+                    } else {
+                        createIndividualMarkers(map, attractionsWithCoords);
+                    }
+                    
+                    // 添加地图性能监控
+                    optimizeMapPerformance(map);
+                    
+                    // 添加地图搜索功能
+                    addMapSearchControl(map);
+                    
+                    // 添加地图统计信息
+                    addMapStats(map, attractionsWithCoords);
+                    
+                    // 自适应地图视野
+                    if (attractionsWithCoords.length > 1) {
+                        const bounds = new AMap.Bounds();
+                        attractionsWithCoords.forEach(attraction => {
+                            bounds.extend([parseFloat(attraction.longitude), parseFloat(attraction.latitude)]);
+                        });
+                        map.setBounds(bounds);
+                    }
+                    
+                    // 保存地图引用供后续使用
+                    window.currentMap = map;
+                });
+                
+            } catch (error) {
+                console.error('创建地图失败:', error);
+                document.getElementById('attractions-map').innerHTML = '<div style="text-align: center; padding: 50px; color: #666;">地图创建失败</div>';
+            }
+        }
+        
+        // 添加地图类型切换控件 - 优化版本
+        function addMapTypeControl(map) {
+            try {
+                // 创建自定义地图类型切换控件
+                const mapTypeControl = new AMap.Control({
+                    position: 'RT',
+                    offset: new AMap.Pixel(10, 10)
+                });
+                
+                // 控件内容 - 现代化设计
+                const controlContent = document.createElement('div');
+                controlContent.className = 'map-type-control';
+                controlContent.innerHTML = `
+                    <div style="background: rgba(255,255,255,0.95); border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); backdrop-filter: blur(10px);">
+                        <div style="display: flex; gap: 4px;">
+                            <button id="roadmap-btn" class="map-type-btn active" style="display: flex; align-items: center; gap: 6px; padding: 8px 12px; border: 2px solid #007bff; background: #007bff; color: white; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">
+                                <i class="fas fa-road"></i>
+                                街道图
+                            </button>
+                            <button id="satellite-btn" class="map-type-btn" style="display: flex; align-items: center; gap: 6px; padding: 8px 12px; border: 2px solid #e0e0e0; background: white; color: #333; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 500; transition: all 0.2s ease;">
+                                <i class="fas fa-satellite"></i>
+                                卫星图
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                mapTypeControl.content = controlContent;
+                map.addControl(mapTypeControl);
+                
+                // 绑定按钮事件 - 添加悬停效果
+                setTimeout(() => {
+                    const roadmapBtn = document.getElementById('roadmap-btn');
+                    const satelliteBtn = document.getElementById('satellite-btn');
+                    
+                    if (roadmapBtn) {
+                        // 添加悬停效果
+                        roadmapBtn.addEventListener('mouseenter', () => {
+                            if (!roadmapBtn.classList.contains('active')) {
+                                roadmapBtn.style.background = '#f0f8ff';
+                                roadmapBtn.style.borderColor = '#007bff';
+                            }
+                        });
+                        
+                        roadmapBtn.addEventListener('mouseleave', () => {
+                            if (!roadmapBtn.classList.contains('active')) {
+                                roadmapBtn.style.background = 'white';
+                                roadmapBtn.style.borderColor = '#e0e0e0';
+                            }
+                        });
+                        
+                        roadmapBtn.addEventListener('click', () => {
+                            map.setLayers([new AMap.TileLayer()]);
+                            roadmapBtn.className = 'map-type-btn active';
+                            roadmapBtn.style.background = '#007bff';
+                            roadmapBtn.style.color = 'white';
+                            roadmapBtn.style.borderColor = '#007bff';
+                            satelliteBtn.className = 'map-type-btn';
+                            satelliteBtn.style.background = 'white';
+                            satelliteBtn.style.color = '#333';
+                            satelliteBtn.style.borderColor = '#e0e0e0';
+                            
+                            // 添加点击反馈动画
+                            roadmapBtn.style.transform = 'scale(0.95)';
+                            setTimeout(() => {
+                                roadmapBtn.style.transform = 'scale(1)';
+                            }, 100);
+                        });
+                    }
+                    
+                    if (satelliteBtn) {
+                        // 添加悬停效果
+                        satelliteBtn.addEventListener('mouseenter', () => {
+                            if (!satelliteBtn.classList.contains('active')) {
+                                satelliteBtn.style.background = '#f0f8ff';
+                                satelliteBtn.style.borderColor = '#007bff';
+                            }
+                        });
+                        
+                        satelliteBtn.addEventListener('mouseleave', () => {
+                            if (!satelliteBtn.classList.contains('active')) {
+                                satelliteBtn.style.background = 'white';
+                                satelliteBtn.style.borderColor = '#e0e0e0';
+                            }
+                        });
+                        
+                        satelliteBtn.addEventListener('click', () => {
+                            map.setLayers([new AMap.TileLayer.Satellite()]);
+                            satelliteBtn.className = 'map-type-btn active';
+                            satelliteBtn.style.background = '#007bff';
+                            satelliteBtn.style.color = 'white';
+                            satelliteBtn.style.borderColor = '#007bff';
+                            roadmapBtn.className = 'map-type-btn';
+                            roadmapBtn.style.background = 'white';
+                            roadmapBtn.style.color = '#333';
+                            roadmapBtn.style.borderColor = '#e0e0e0';
+                            
+                            // 添加点击反馈动画
+                            satelliteBtn.style.transform = 'scale(0.95)';
+                            setTimeout(() => {
+                                satelliteBtn.style.transform = 'scale(1)';
+                            }, 100);
+                        });
+                    }
+                }, 100);
+                
+            } catch (error) {
+                console.error('添加地图类型控件失败:', error);
+                showNotification('地图类型切换控件加载失败', 'error');
+            }
+        }
+        
+        // 添加全屏控件 - 优化版本
+        function addFullscreenControl(map) {
+            try {
+                // 创建全屏切换控件
+                const fullscreenControl = new AMap.Control({
+                    position: 'RT',
+                    offset: new AMap.Pixel(10, 70)
+                });
+                
+                const controlContent = document.createElement('div');
+                controlContent.className = 'fullscreen-control';
+                controlContent.innerHTML = `
+                    <div id="fullscreen-toggle" style="background: rgba(255,255,255,0.95); border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 10px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: all 0.2s ease; backdrop-filter: blur(10px);" title="全屏显示">
+                        <i id="fullscreen-icon" class="fas fa-expand" style="font-size: 18px; color: #333; transition: transform 0.2s ease;"></i>
+                    </div>
+                `;
+                
+                fullscreenControl.content = controlContent;
+                map.addControl(fullscreenControl);
+                
+                // 绑定全屏事件 - 添加动画效果
+                const fullscreenToggle = controlContent.querySelector('#fullscreen-toggle');
+                const fullscreenIcon = controlContent.querySelector('#fullscreen-icon');
+                
+                if (fullscreenToggle && fullscreenIcon) {
+                    fullscreenToggle.addEventListener('click', () => {
+                        toggleFullscreen('attractions-map', fullscreenIcon);
+                    });
+                    
+                    // 添加悬停效果
+                    fullscreenToggle.addEventListener('mouseenter', () => {
+                        fullscreenToggle.style.background = 'rgba(255,255,255,1)';
+                        fullscreenToggle.style.transform = 'scale(1.05)';
+                        fullscreenIcon.style.transform = 'scale(1.1)';
+                    });
+                    
+                    fullscreenToggle.addEventListener('mouseleave', () => {
+                        fullscreenToggle.style.background = 'rgba(255,255,255,0.95)';
+                        fullscreenToggle.style.transform = 'scale(1)';
+                        fullscreenIcon.style.transform = 'scale(1)';
+                    });
+                    
+                    // 监听全屏状态变化
+                    document.addEventListener('fullscreenchange', () => {
+                        if (document.fullscreenElement) {
+                            fullscreenIcon.className = 'fas fa-compress';
+                            fullscreenToggle.title = '退出全屏';
+                        } else {
+                            fullscreenIcon.className = 'fas fa-expand';
+                            fullscreenToggle.title = '全屏显示';
+                        }
+                        
+                        // 重新调整地图大小
+                        setTimeout(() => {
+                            if (window.currentMap) {
+                                window.currentMap.resize();
+                            }
+                        }, 100);
+                    });
+                }
+                
+            } catch (error) {
+                console.error('添加全屏控件失败:', error);
+                showNotification('全屏控件加载失败', 'error');
+            }
+        }
+        
+        // 全屏切换功能 - 优化版本
+        function toggleFullscreen(elementId, iconElement) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+            
+            if (!document.fullscreenElement) {
+                // 进入全屏
+                const requestFullscreen = element.requestFullscreen || 
+                                        element.webkitRequestFullscreen || 
+                                        element.msRequestFullscreen;
+                
+                if (requestFullscreen) {
+                    requestFullscreen.call(element).then(() => {
+                        // 全屏成功，更新图标
+                        if (iconElement) {
+                            iconElement.className = 'fas fa-compress';
+                        }
+                        // 重新调整地图大小
+                        setTimeout(() => {
+                            if (window.currentMap) {
+                                window.currentMap.resize();
+                            }
+                        }, 300);
+                    }).catch(err => {
+                        console.error('进入全屏失败:', err);
+                        showNotification('全屏功能暂不可用，请检查浏览器权限', 'error');
+                    });
+                } else {
+                    showNotification('您的浏览器不支持全屏功能', 'warning');
+                }
+            } else {
+                // 退出全屏
+                const exitFullscreen = document.exitFullscreen || 
+                                     document.webkitExitFullscreen || 
+                                     document.msExitFullscreen;
+                
+                if (exitFullscreen) {
+                    exitFullscreen.call(document).then(() => {
+                        // 退出全屏成功，更新图标
+                        if (iconElement) {
+                            iconElement.className = 'fas fa-expand';
+                        }
+                        // 重新调整地图大小
+                        setTimeout(() => {
+                            if (window.currentMap) {
+                                window.currentMap.resize();
+                            }
+                        }, 300);
+                    }).catch(err => {
+                        console.error('退出全屏失败:', err);
+                    });
+                }
+            }
+        }
+        
+        // 创建聚合标记 - 优化版本
+        function createClusteredMarkers(map, attractions) {
+            // 动态加载MarkerClusterer插件
+            AMap.plugin(['AMap.MarkerCluster'], function() {
+                // 批量创建标记，提高性能
+                const markers = [];
+                const infoWindows = [];
+                
+                // 预创建信息窗口内容，减少重复DOM操作
+                attractions.forEach((attraction, index) => {
+                    const position = [parseFloat(attraction.longitude), parseFloat(attraction.latitude)];
+                    
+                    // 创建标记
+                    const marker = new AMap.Marker({
+                        position: position,
+                        title: attraction.name,
+                        extData: {
+                            attraction: attraction,
+                            index: index
+                        }
+                    });
+                    
+                    // 预创建信息窗口内容
+                    const infoWindowContent = `
+                        <div style="padding: 12px; max-width: 300px; min-width: 200px;">
+                            <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                                <i class="fas fa-map-marker-alt" style="color: #ff6b6b; margin-right: 8px;"></i>
+                                <h4 style="margin: 0; color: #333; font-size: 16px; font-weight: bold;">${attraction.name}</h4>
+                            </div>
+                            <div style="margin-bottom: 8px;">
+                                <span style="color: #ffa500; margin-right: 10px;">
+                                    <i class="fas fa-star"></i> ${attraction.rating || '暂无评分'}
+                                </span>
+                                <span style="color: #666; font-size: 14px;">
+                                    <i class="fas fa-tag"></i> ${attraction.category || '景点'}
+                                </span>
+                            </div>
+                            <p style="margin: 0 0 8px 0; color: #666; font-size: 14px; line-height: 1.4;">${attraction.description || '暂无描述'}</p>
+                            ${attraction.address ? `<div style="color: #888; font-size: 12px; margin-bottom: 8px;">
+                                <i class="fas fa-location-arrow"></i> ${attraction.address}
+                            </div>` : ''}
+                            <div style="border-top: 1px solid #eee; padding-top: 8px; margin-top: 8px;">
+                                <button onclick="window.openDirections('${attraction.name}', '${attraction.longitude}', '${attraction.latitude}')" 
+                                        style="background: #007bff; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px; margin-right: 8px;">
+                                    <i class="fas fa-directions"></i> 导航
+                                </button>
+                                <button onclick="window.viewAttractionDetails('${attraction.name}')" 
+                                        style="background: #28a745; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                                    <i class="fas fa-info-circle"></i> 详情
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    
+                    marker.infoWindowContent = infoWindowContent;
+                    markers.push(marker);
+                });
+                
+                // 创建聚合实例 - 增强版
+                const cluster = new AMap.MarkerCluster(map, markers, {
+                    gridSize: 60,
+                    maxZoom: 16,
+                    minClusterSize: 2,
+                    averageCenter: true,
+                    styles: [{
+                        url: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNTMiIGhlaWdodD0iNTMiIHZpZXdCb3g9IjAgMCA1MyA1MyIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICAgIDxjaXJjbGUgY3g9IjI2LjUiIGN5PSIyNi41IiByPSIyNi41IiBmaWxsPSIjRkY2QjZCIiBvcGFjaXR5PSIwLjgiLz4KICAgIDx0ZXh0IHg9IjI2LjUiIHk9IjMyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXNpemU9IjE0IiBmaWxsPSJ3aGl0ZSIgZm9udC1mYW1pbHk9IkFyaWFsIj57Y2x1c3Rlcl9jb3VudH08L3RleHQ+Cjwvc3ZnPgo=',
+                        size: new AMap.Size(53, 53),
+                        offset: new AMap.Pixel(-26, -26),
+                        textColor: '#ffffff',
+                        textSize: 14
+                    }]
+                });
+                
+                // 为聚合后的标记添加点击事件 - 增强版
+                cluster.on('click', function(item) {
+                    if (item.markers && item.markers.length === 1) {
+                        // 单个标记被点击
+                        const marker = item.markers[0];
+                        const infoWindow = new AMap.InfoWindow({
+                            content: marker.infoWindowContent,
+                            offset: new AMap.Pixel(0, -40),
+                            autoMove: true,
+                            closeWhenClickMap: true,
+                            maxWidth: 350
+                        });
+                        
+                        // 关闭其他信息窗口
+                        if (window.currentInfoWindows) {
+                            window.currentInfoWindows.forEach(win => win.close());
+                        }
+                        
+                        infoWindow.open(map, marker);
+                        
+                        // 保存当前信息窗口引用
+                        if (!window.currentInfoWindows) {
+                            window.currentInfoWindows = [];
+                        }
+                        window.currentInfoWindows.push(infoWindow);
+                        
+                        // 地图居中到标记位置，带有动画效果
+                        map.panTo(marker.getPosition(), {
+                            duration: 500,
+                            delay: 0
+                        });
+                    } else if (item.markers && item.markers.length > 1) {
+                        // 聚合标记被点击，自动放大地图
+                        const bounds = new AMap.Bounds();
+                        item.markers.forEach(marker => {
+                            bounds.extend(marker.getPosition());
+                        });
+                        map.setBounds(bounds, {
+                            padding: [20, 20, 20, 20],
+                            duration: 500
+                        });
+                    }
+                });
+                
+                // 为未聚合的标记添加点击事件 - 增强版
+                markers.forEach(marker => {
+                    // 添加鼠标悬停效果
+                    marker.on('mouseover', function() {
+                        this.setIcon(new AMap.Icon({
+                            size: new AMap.Size(36, 44),
+                            image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iNDQiIHZpZXdCb3g9IjAgMCAzNiA0NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE4IDBDOC4wNTg4NyAwIDAgOC4wNTg4NyAwIDE4QzAgMjcuOTQxMSA4LjA1ODg3IDM2IDE4IDM2QzI3Ljk0MTEgMzYgMzYgMjcuOTQxMSAzNiAxOEMzNiA4LjA1ODg3IDI3Ljk0MTEgMCAxOCAwWiIgZmlsbD0iIzAwN2JmZiIvPgo8cGF0aCBkPSJNMTggMzZMMjcgMThIMThIMThMMTggMzZaIiBmaWxsPSIjMDA3YmZmIi8+CjxjaXJjbGUgY3g9IjE4IiBjeT0iMTgiIHI9IjkiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=',
+                            imageSize: new AMap.Size(36, 44),
+                            imageOffset: new AMap.Pixel(-18, -44)
+                        }));
+                        this.setOffset(new AMap.Pixel(-18, -44));
+                        this.setzIndex(1000);
+                    });
+                    
+                    marker.on('mouseout', function() {
+                        this.setIcon(new AMap.Icon({
+                            size: new AMap.Size(32, 40),
+                            image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCAzMiA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE2IDBDNy4xNjM0NCAwIDAgNy4xNjM0NCAwIDE2QzAgMjQuODM2NiA3LjE2MzQ0IDMyIDE2IDMyQzI0LjgzNjYgMzIgMzIgMjQuODM2NiAzMiAxNkMzMiA3LjE2MzQ0IDI0LjgzNjYgMCAxNiAwWiIgZmlsbD0iIzAwN2JmZiIvPgo8cGF0aCBkPSJNMTYgMzJMMjQgMTZIMTZIMTZMMTYgMzJaIiBmaWxsPSIjMDA3YmZmIi8+CjxjaXJjbGUgY3g9IjE2IiBjeT0iMTYiIHI9IjgiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=',
+                            imageSize: new AMap.Size(32, 40),
+                            imageOffset: new AMap.Pixel(-16, -40)
+                        }));
+                        this.setOffset(new AMap.Pixel(-16, -40));
+                        this.setzIndex(100);
+                    });
+                    
+                    marker.on('click', function() {
+                        // 关闭其他信息窗口
+                        if (window.currentInfoWindows) {
+                            window.currentInfoWindows.forEach(win => win.close());
+                        }
+                        
+                        const infoWindow = new AMap.InfoWindow({
+                            content: this.infoWindowContent,
+                            offset: new AMap.Pixel(0, -40),
+                            autoMove: true,
+                            closeWhenClickMap: true,
+                            maxWidth: 350
+                        });
+                        
+                        infoWindow.open(map, this);
+                        
+                        // 保存当前信息窗口引用
+                        if (!window.currentInfoWindows) {
+                            window.currentInfoWindows = [];
+                        }
+                        window.currentInfoWindows.push(infoWindow);
+                        
+                        // 保存标记引用
+                        if (!window.currentMarkers) {
+                            window.currentMarkers = [];
+                        }
+                        window.currentMarkers.push(this);
+                        
+                        // 地图居中到标记位置，带有动画效果
+                        map.panTo(this.getPosition(), {
+                            duration: 500,
+                            delay: 0
+                        });
+                    });
+                });
+                
+                // 保存标记引用供后续使用
+                if (!window.currentMarkers) {
+                    window.currentMarkers = [];
+                }
+                window.currentMarkers = markers;
+                
+            });
+        }
+        
+        // 创建单独标记 - 优化版本
+        function createIndividualMarkers(map, attractions) {
+            // 预创建所有信息窗口内容，提高性能
+            const infoWindows = [];
+            const markers = [];
+            
+            // 批量创建标记，减少DOM操作
+            attractions.forEach((attraction, index) => {
+                const position = [parseFloat(attraction.longitude), parseFloat(attraction.latitude)];
+                
+                // 预创建信息窗口内容 - 增强版
+                const infoWindowContent = `
+                    <div style="padding: 12px; max-width: 300px; min-width: 200px; background: white; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
+                        <div style="display: flex; align-items: center; margin-bottom: 8px; border-bottom: 1px solid #f0f0f0; padding-bottom: 8px;">
+                            <i class="fas fa-map-marker-alt" style="color: #ff6b6b; margin-right: 8px; font-size: 18px;"></i>
+                            <h4 style="margin: 0; color: #333; font-size: 16px; font-weight: bold;">${attraction.name}</h4>
+                        </div>
+                        <div style="margin-bottom: 8px;">
+                            <span style="color: #ffa500; margin-right: 10px; font-weight: 500;">
+                                <i class="fas fa-star"></i> ${attraction.rating || '暂无评分'}
+                            </span>
+                            <span style="color: #666; font-size: 14px;">
+                                <i class="fas fa-tag"></i> ${attraction.category || '景点'}
+                            </span>
+                        </div>
+                        <p style="margin: 0 0 8px 0; color: #666; font-size: 14px; line-height: 1.4;">${attraction.description || '暂无描述'}</p>
+                        ${attraction.address ? `<div style="color: #888; font-size: 12px; margin-bottom: 8px;">
+                            <i class="fas fa-location-arrow"></i> ${attraction.address}
+                        </div>` : ''}
+                        <div style="border-top: 1px solid #f0f0f0; padding-top: 8px; margin-top: 8px; display: flex; gap: 8px;">
+                            <button onclick="window.openDirections('${attraction.name}', '${attraction.longitude}', '${attraction.latitude}')" 
+                                    style="flex: 1; background: linear-gradient(135deg, #007bff, #0056b3); color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(0,123,255,0.2);">
+                                <i class="fas fa-directions"></i> 导航
+                            </button>
+                            <button onclick="window.viewAttractionDetails('${attraction.name}')" 
+                                    style="flex: 1; background: linear-gradient(135deg, #28a745, #1e7e34); color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s ease; box-shadow: 0 2px 4px rgba(40,167,69,0.2);">
+                                <i class="fas fa-info-circle"></i> 详情
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                // 创建标记 - 添加自定义图标
+                const marker = new AMap.Marker({
+                    position: position,
+                    title: attraction.name,
+                    map: map,
+                    // 自定义图标 - 更美观的标记
+                    icon: new AMap.Icon({
+                        size: new AMap.Size(32, 40),
+                        image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCAzMiA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE2IDBDNy4xNjM0NCAwIDAgNy4xNjM0NCAwIDE2QzAgMjQuODM2NiA3LjE2MzQ0IDMyIDE2IDMyQzI0LjgzNjYgMzIgMzIgMjQuODM2NiAzMiAxNkMzMiA3LjE2MzQ0IDI0LjgzNjYgMCAxNiAwWiIgZmlsbD0iI0ZGNkI2QiIvPgo8cGF0aCBkPSJNMTYgMzJMMjQgMTZIMTZIMTZMMTYgMzJaIiBmaWxsPSIjRkY2QjZCIi8+CjxjaXJjbGUgY3g9IjE2IiBjeT0iMTYiIHI9IjgiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=',
+                        imageSize: new AMap.Size(32, 40),
+                        imageOffset: new AMap.Pixel(-16, -40)
+                    }),
+                    offset: new AMap.Pixel(-16, -40),
+                    extData: {
+                        attraction: attraction,
+                        index: index,
+                        infoWindowContent: infoWindowContent
+                    }
+                });
+                
+                markers.push(marker);
+            });
+            
+            // 批量绑定事件，提高性能 - 添加更多交互功能
+            setTimeout(() => {
+                markers.forEach((marker, index) => {
+                    const infoWindow = new AMap.InfoWindow({
+                        content: marker.getExtData().infoWindowContent,
+                        offset: new AMap.Pixel(0, -40),
+                        autoMove: true,
+                        closeWhenClickMap: true,
+                        maxWidth: 350
+                    });
+                    
+                    marker.on('click', function() {
+                        // 关闭其他信息窗口
+                        if (window.currentInfoWindows) {
+                            window.currentInfoWindows.forEach(win => win.close());
+                        }
+                        
+                        infoWindow.open(map, this);
+                        
+                        // 保存当前信息窗口引用
+                        if (!window.currentInfoWindows) {
+                            window.currentInfoWindows = [];
+                        }
+                        window.currentInfoWindows.push(infoWindow);
+                        
+                        // 地图居中到标记位置，带有动画效果
+                        map.panTo(this.getPosition(), {
+                            duration: 500,
+                            delay: 0
+                        });
+                    });
+                    
+                    // 添加鼠标悬停效果
+                    marker.on('mouseover', function() {
+                        this.setIcon(new AMap.Icon({
+                            size: new AMap.Size(36, 44),
+                            image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzYiIGhlaWdodD0iNDQiIHZpZXdCb3g9IjAgMCAzNiA0NCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE4IDBDOC4wNTg4NyAwIDAgOC4wNTg4NyAwIDE4QzAgMjcuOTQxMSA4LjA1ODg3IDM2IDE4IDM2QzI3Ljk0MTEgMzYgMzYgMjcuOTQxMSAzNiAxOEMzNiA4LjA1ODg3IDI3Ljk0MTEgMCAxOCAwWiIgZmlsbD0iI0ZGNkI2QiIvPgo8cGF0aCBkPSJNMTggMzZMMjcgMThIMThIMThMMTggMzZaIiBmaWxsPSIjRkY2QjZCIi8+CjxjaXJjbGUgY3g9IjE4IiBjeT0iMTgiIHI9IjkiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=',
+                            imageSize: new AMap.Size(36, 44),
+                            imageOffset: new AMap.Pixel(-18, -44)
+                        }));
+                        this.setOffset(new AMap.Pixel(-18, -44));
+                        this.setzIndex(1000); // 提高层级
+                    });
+                    
+                    marker.on('mouseout', function() {
+                        this.setIcon(new AMap.Icon({
+                            size: new AMap.Size(32, 40),
+                            image: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMzIiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCAzMiA0MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZD0iTTE2IDBDNy4xNjM0NCAwIDAgNy4xNjM0NCAwIDE2QzAgMjQuODM2NiA3LjE2MzQ0IDMyIDE2IDMyQzI0LjgzNjYgMzIgMzIgMjQuODM2NiAzMiAxNkMzMiA3LjE2MzQ0IDI0LjgzNjYgMCAxNiAwWiIgZmlsbD0iI0ZGNkI2QiIvPgo8cGF0aCBkPSJNMTYgMzJMMjQgMTZIMTZIMTZMMTYgMzJaIiBmaWxsPSIjRkY2QjZCIi8+CjxjaXJjbGUgY3g9IjE2IiBjeT0iMTYiIHI9IjgiIGZpbGw9IndoaXRlIi8+Cjwvc3ZnPgo=',
+                            imageSize: new AMap.Size(32, 40),
+                            imageOffset: new AMap.Pixel(-16, -40)
+                        }));
+                        this.setOffset(new AMap.Pixel(-16, -40));
+                        this.setzIndex(100); // 恢复层级
+                    });
+                    
+                    infoWindows.push(infoWindow);
+                });
+                
+                // 保存信息窗口引用，便于后续管理
+                window.attractionInfoWindows = infoWindows;
+                window.currentMarkers = markers;
+                
+            }, 100); // 延迟绑定事件，避免阻塞UI
+        }
+        // 添加地图性能监控和优化
+        function optimizeMapPerformance(map) {
+            // 监听地图移动事件，优化标记显示
+            let moveTimer;
+            map.on('movestart', function() {
+                if (window.currentMarkers) {
+                    window.currentMarkers.forEach(marker => {
+                        marker.setOpacity(0.7); // 移动时降低透明度
+                    });
+                }
+            });
+            
+            map.on('moveend', function() {
+                clearTimeout(moveTimer);
+                moveTimer = setTimeout(() => {
+                    if (window.currentMarkers) {
+                        window.currentMarkers.forEach(marker => {
+                            marker.setOpacity(1); // 移动结束后恢复透明度
+                        });
+                    }
+                }, 300);
+            });
+            
+            // 监听缩放事件，优化性能
+            let zoomTimer;
+            map.on('zoomstart', function() {
+                if (window.currentInfoWindows) {
+                    window.currentInfoWindows.forEach(win => win.close()); // 缩放时关闭信息窗口
+                }
+            });
+            
+            map.on('zoomend', function() {
+                clearTimeout(zoomTimer);
+                zoomTimer = setTimeout(() => {
+                    console.log('地图缩放级别:', map.getZoom());
+                }, 300);
+            });
+        }
+        
+        // 添加地图工具函数
+        window.openDirections = function(name, longitude, latitude) {
+            // 打开导航 - 支持多种地图服务
+            const url = `https://uri.amap.com/navigation?to=${longitude},${latitude},${name}&mode=car&policy=1&src=myapp&coordinate=gaode&callnative=0`;
+            window.open(url, '_blank');
+            
+            // 显示提示信息
+            if (window.notificationManager) {
+                window.notificationManager.success('正在打开导航...', '导航');
+            }
+        };
+        
+        window.viewAttractionDetails = function(name) {
+            // 查看景点详情 - 可以跳转到详情页面或显示模态框
+            console.log('查看景点详情:', name);
+            
+            // 显示提示信息
+            if (window.notificationManager) {
+                window.notificationManager.info(`正在加载 "${name}" 的详细信息...`, '详情');
+            }
+            
+            // 这里可以添加跳转到详情页的逻辑
+            // window.location.href = `/attraction/${encodeURIComponent(name)}`;
+        };
+        
+        // 添加地图搜索功能
+        function addMapSearchControl(map) {
+            // 创建搜索控件
+            const searchControl = new AMap.Control({
+                position: 'LT'
+            });
+            
+            // 创建搜索框DOM
+            const searchDiv = document.createElement('div');
+            searchDiv.className = 'map-search-control';
+            searchDiv.innerHTML = `
+                <div style="position: relative; margin: 10px; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow: hidden;">
+                    <input type="text" id="mapSearchInput" placeholder="搜索景点..." 
+                           style="width: 200px; padding: 10px 40px 10px 15px; border: none; outline: none; font-size: 14px;">
+                    <button onclick="window.searchAttractions()" 
+                            style="position: absolute; right: 0; top: 0; width: 40px; height: 100%; border: none; background: #007bff; color: white; cursor: pointer; transition: background 0.2s ease;">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+                <div id="searchResults" style="max-height: 200px; overflow-y: auto; background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin: 0 10px; display: none;"></div>
+            `;
+            
+            searchControl.container = searchDiv;
+            map.addControl(searchControl);
+            
+            // 添加回车键搜索支持
+            const searchInput = document.getElementById('mapSearchInput');
+            if (searchInput) {
+                searchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        window.searchAttractions();
+                    }
+                });
+            }
+        }
+        
+        // 搜索景点功能
+        window.searchAttractions = function() {
+            const searchInput = document.getElementById('mapSearchInput');
+            const searchResults = document.getElementById('searchResults');
+            
+            if (!searchInput || !searchResults) return;
+            
+            const query = searchInput.value.trim();
+            if (!query) {
+                searchResults.style.display = 'none';
+                return;
+            }
+            
+            // 搜索逻辑
+            if (window.currentMarkers) {
+                const results = window.currentMarkers.filter(marker => {
+                    const attraction = marker.getExtData().attraction;
+                    return attraction && attraction.name && attraction.name.toLowerCase().includes(query.toLowerCase());
+                });
+                
+                if (results.length > 0) {
+                    let resultsHTML = '';
+                    results.forEach(marker => {
+                        const attraction = marker.getExtData().attraction;
+                        resultsHTML += `
+                            <div onclick="window.focusOnMarker(${marker.getExtData().index})" 
+                                 style="padding: 10px 15px; border-bottom: 1px solid #f0f0f0; cursor: pointer; transition: background 0.2s ease;"
+                                 onmouseover="this.style.background='#f8f9fa'" 
+                                 onmouseout="this.style.background='white'">
+                                <div style="font-weight: 500; color: #333; margin-bottom: 4px;">${attraction.name}</div>
+                                <div style="font-size: 12px; color: #666;">${attraction.category || '景点'} | ${attraction.rating || '暂无评分'}</div>
+                            </div>
+                        `;
+                    });
+                    
+                    searchResults.innerHTML = resultsHTML;
+                    searchResults.style.display = 'block';
+                } else {
+                    searchResults.innerHTML = '<div style="padding: 15px; text-align: center; color: #666;">未找到相关景点</div>';
+                    searchResults.style.display = 'block';
+                }
+            }
+        };
+        
+        // 聚焦到指定标记
+        window.focusOnMarker = function(index) {
+            if (window.currentMarkers && window.currentMarkers[index]) {
+                const marker = window.currentMarkers[index];
+                const map = marker.getMap();
+                
+                // 关闭搜索结果
+                const searchResults = document.getElementById('searchResults');
+                if (searchResults) {
+                    searchResults.style.display = 'none';
+                }
+                
+                // 触发标记点击事件
+                marker.emit('click', {target: marker});
+                
+                // 地图居中并放大
+                map.setZoomAndCenter(16, marker.getPosition(), true, 500);
+            }
+        };
+        
+        // 添加地图统计信息
+        function addMapStats(map, attractions) {
+            const statsControl = new AMap.Control({
+                position: 'RB'
+            });
+            
+            const statsDiv = document.createElement('div');
+            statsDiv.className = 'map-stats-control';
+            statsDiv.innerHTML = `
+                <div style="background: rgba(0,0,0,0.7); color: white; padding: 8px 12px; border-radius: 6px; font-size: 12px; margin: 10px;">
+                    <div style="margin-bottom: 4px;"><i class="fas fa-map-marker-alt"></i> 景点数量: ${attractions.length}</div>
+                    <div style="margin-bottom: 4px;"><i class="fas fa-search-plus"></i> 缩放级别: <span id="zoomLevel">${map.getZoom()}</span></div>
+                    <div><i class="fas fa-crosshairs"></i> 中心坐标: ${map.getCenter().toString()}</div>
+                </div>
+            `;
+            
+            statsControl.container = statsDiv;
+            map.addControl(statsControl);
+            
+            // 监听缩放变化
+            map.on('zoomend', function() {
+                const zoomLevelSpan = document.getElementById('zoomLevel');
+                if (zoomLevelSpan) {
+                    zoomLevelSpan.textContent = map.getZoom();
+                }
+            });
+        }
+    </script>
+</body>
+</html>

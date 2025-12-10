@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI天气助手</title>
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 40px;
+            margin: 20px auto 0;
+            width: 90%;
+            max-width: 1200px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 2em;
+        }
+        .chat-container {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 20px;
+            width: 100%;
+        }
+        .chat-history {
+            height: 60vh;
+            overflow-y: auto;
+            padding: 20px;
+            background-color: #f8f9fa;
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 12px 20px;
+            border-radius: 20px;
+            max-width: 80%;
+            word-wrap: break-word;
+            width: fit-content;
+            min-width: 10%;
+        }
+        .user-message {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        .agent-message {
+            background: #e9ecef;
+            color: #495057;
+            margin-right: auto;
+        }
+        .chat-input-container {
+            display: flex;
+            padding: 15px;
+            background: white;
+            border-top: 1px solid #ddd;
+        }
+        #user-input {
+            flex: 1;
+            padding: 12px 20px;
+            border: 1px solid #ddd;
+            border-radius: 30px;
+            font-size: 16px;
+            outline: none;
+        }
+        #user-input:focus {
+            border-color: #4facfe;
+        }
+        #send-button {
+            padding: 12px 25px;
+            margin-left: 10px;
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        #send-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+        }
+        #send-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        .status {
+            text-align: center;
+            color: #6c757d;
+            font-size: 14px;
+            padding: 10px;
+        }
+        .welcome-message {
+            text-align: center;
+            padding: 20px;
+            color: #6c757d;
+        }
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #4facfe;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .back-link {
+            display: inline-block;
+            margin-top: 30px;
+            color: #4facfe;
+            text-decoration: none;
+            font-size: 16px;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+                margin-top: 10px;
+            }
+            .chat-history {
+                height: 400px;
+                padding: 15px;
+            }
+            .message {
+                max-width: 90%;
+                padding: 10px 15px;
+            }
+            #user-input {
+                padding: 10px 15px;
+                font-size: 14px;
+            }
+            #send-button {
+                padding: 10px 20px;
+                font-size: 14px;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <h1><i class="fas fa-robot"></i> AI天气助手</h1>
+        
+        <div class="chat-container">
+            <div id="chat-history" class="chat-history">
+                <div class="agent-message message">
+                    你好！我是AI天气助手，请问有什么可以帮助您的？
+                    <br><br>
+                    您可以向我询问：
+                    <br>- 某个城市的当前天气
+                    <br>- 未来几天的天气预报
+                    <br>- 某个城市的当地时间
+                    <br>- 多个城市的天气对比
+                </div>
+            </div>
+            
+            <div id="status" class="status">
+                <span id="status-text">等待输入...</span>
+            </div>
+            
+            <div class="chat-input-container">
+                <input type="text" id="user-input" placeholder="请输入您的问题，例如：北京明天的天气如何？">
+                <button id="send-button">发送</button>
+            </div>
+        </div>
+        
+        <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> 返回首页</a>
+    </div>
+    
+    <script>
+        // 获取DOM元素
+        const chatHistory = document.getElementById('chat-history');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const statusText = document.getElementById('status-text');
+        
+        // 发送消息函数
+        function sendMessage() {
+            const message = userInput.value.trim();
+            if (!message) return;
+            
+            // 添加用户消息到聊天历史
+            addMessageToHistory(message, 'user');
+            
+            // 清空输入框并禁用发送按钮
+            userInput.value = '';
+            sendButton.disabled = true;
+            
+            // 更新状态为正在思考
+            statusText.innerHTML = '<span class="loading"></span> 正在思考...';
+            
+            // 发送请求到API
+            fetch('/api/agent-chat', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ query: message })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // 添加agent回复到聊天历史
+                // 正确处理不同的响应格式
+                let responseMessage = '抱歉，我暂时无法回答这个问题。';
+                
+                // 检查是否包含response字段
+                if (typeof data.response === 'string') {
+                    responseMessage = data.response;
+                }
+                // 检查是否包含content字段（与ai_api_client.py返回格式匹配）
+                else if (typeof data.content === 'string') {
+                    responseMessage = data.content;
+                }
+                // 检查是否包含report字段（与deepseek_query函数返回格式匹配）
+                else if (typeof data.report === 'string') {
+                    responseMessage = data.report;
+                }
+                // 处理可能的嵌套结构
+                else if (typeof data.response === 'object' && data.response !== null) {
+                    if (typeof data.response.content === 'string') {
+                        responseMessage = data.response.content;
+                    }
+                }
+                
+                addMessageToHistory(responseMessage, 'agent');
+                
+                // 恢复状态
+                statusText.textContent = '等待输入...';
+                sendButton.disabled = false;
+                
+                // 滚动到底部
+                scrollToBottom();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                addMessageToHistory('抱歉，服务器出现错误，请稍后再试。', 'agent');
+                statusText.textContent = '等待输入...';
+                sendButton.disabled = false;
+                scrollToBottom();
+            });
+        }
+        
+        // 添加消息到聊天历史
+        function addMessageToHistory(message, sender) {
+            const messageElement = document.createElement('div');
+            messageElement.className = `${sender}-message message`;
+            
+            // 将消息中的换行符转换为<br>，确保message是字符串
+            const messageText = typeof message === 'string' ? message : String(message || '');
+            messageElement.innerHTML = messageText.replace(/\n/g, '<br>');
+            
+            chatHistory.appendChild(messageElement);
+            scrollToBottom();
+        }
+        
+        // 滚动到底部
+        function scrollToBottom() {
+            chatHistory.scrollTop = chatHistory.scrollHeight;
+        }
+        
+        // 事件监听
+        sendButton.addEventListener('click', sendMessage);
+        
+        userInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                sendMessage();
+            }
+        });
+        
+        // 初始化时滚动到底部
+        window.addEventListener('load', scrollToBottom);
+    </script>
+</body>
+</html>

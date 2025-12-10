@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="{{ 'zh-CN' if language == 'zh' else 'en' }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ city }} - {{ '地点简介' if language == 'zh' else 'Place Information' }}</title>
+    <style>
+        :root {
+            --primary: #667eea;
+            --primary-dark: #764ba2;
+            --secondary: #95a5a6;
+            --text-primary: #2c3e50;
+            --text-secondary: #34495e;
+            --text-muted: #7f8c8d;
+            --bg-light: #f8f9fa;
+            --bg-lighter: #e9ecef;
+            --white: #ffffff;
+            --shadow: 0 10px 30px rgba(0,0,0,0.1);
+            --shadow-hover: 0 15px 35px rgba(0,0,0,0.15);
+            --radius: 15px;
+            --radius-card: 12px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        /* 城市图片样式 */
+        .city-image-container {
+            margin-bottom: 30px;
+            border-radius: var(--radius-card);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+        }
+        
+        .city-image-wrapper {
+            position: relative;
+            width: 100%;
+            height: 250px;
+            background: var(--bg-light);
+        }
+        
+        .city-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: opacity 0.5s ease;
+        }
+        
+        .image-placeholder {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-lighter);
+            color: var(--text-muted);
+        }
+        
+        .city-image[src] {
+            opacity: 1;
+        }
+        
+        .city-image:not([src]),
+        .city-image[src=""] {
+            opacity: 0;
+        }
+        
+        /* 天气预报样式 */
+        .forecast-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 15px;
+        }
+        
+        .forecast-card {
+            background: var(--bg-light);
+            padding: 15px;
+            border-radius: var(--radius-card);
+            text-align: center;
+            transition: var(--transition);
+            border-left: 3px solid var(--primary);
+        }
+        
+        .forecast-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+        }
+        
+        .forecast-date {
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: var(--text-primary);
+        }
+        
+        .forecast-weather {
+            font-size: 0.9em;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .forecast-temp {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .max-temp {
+            font-weight: bold;
+            color: #e74c3c;
+        }
+        
+        .min-temp {
+            color: #3498db;
+        }
+        
+        /* 24小时预报样式 */
+        .hourly-forecast-container {
+            display: flex;
+            overflow-x: auto;
+            gap: 12px;
+            padding: 10px 0;
+            scrollbar-width: thin;
+            scrollbar-color: var(--primary) var(--bg-light);
+        }
+        
+        .hourly-forecast-container::-webkit-scrollbar {
+            height: 6px;
+        }
+        
+        .hourly-forecast-container::-webkit-scrollbar-track {
+            background: var(--bg-light);
+            border-radius: 10px;
+        }
+        
+        .hourly-forecast-container::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 10px;
+        }
+        
+        .hourly-forecast-container::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-dark);
+        }
+        
+        .hourly-card {
+            flex: 0 0 80px;
+            background: var(--bg-light);
+            padding: 12px 8px;
+            border-radius: var(--radius-card);
+            text-align: center;
+            border-left: 3px solid var(--secondary);
+            transition: var(--transition);
+        }
+        
+        .hourly-card:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--shadow);
+        }
+        
+        .hourly-time {
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+        
+        .hourly-weather {
+            font-size: 0.8em;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .hourly-temp {
+            font-weight: bold;
+            color: var(--primary);
+        }
+        
+        body {
+            font-family: "Helvetica Neue", Arial, sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            min-height: 100vh;
+            padding: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .container {
+            background: var(--white);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 40px;
+            width: 100%;
+            max-width: 900px;
+            animation: fadeInUp 0.8s ease-out;
+        }
+        
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        h1 {
+            color: var(--text-primary);
+            margin-bottom: 20px;
+            font-size: 2.5em;
+            text-align: center;
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 15px;
+            font-weight: 800;
+        }
+        
+        .info-header {
+            text-align: center;
+            margin-bottom: 30px;
+            background: var(--bg-light);
+            padding: 20px;
+            border-radius: var(--radius-card);
+            border-left: 5px solid var(--primary);
+        }
+        
+        .current-time {
+            font-size: 1.2em;
+            color: var(--text-muted);
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .section {
+            margin-bottom: 40px;
+            animation: fadeIn 0.5s ease-out;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+            to {
+                opacity: 1;
+            }
+        }
+        
+        .section:nth-child(2) { animation-delay: 0.1s; }
+        .section:nth-child(3) { animation-delay: 0.2s; }
+        .section:nth-child(4) { animation-delay: 0.3s; }
+        .section:nth-child(5) { animation-delay: 0.4s; }
+        
+        .section h2 {
+            color: var(--primary);
+            font-size: 1.8em;
+            margin-bottom: 20px;
+            border-left: 5px solid var(--primary);
+            padding-left: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .description {
+            font-size: 1.2em;
+            line-height: 1.8;
+            color: var(--text-secondary);
+            margin-bottom: 25px;
+            background: var(--bg-light);
+            padding: 20px;
+            border-radius: var(--radius-card);
+            border-left: 3px solid var(--primary);
+        }
+        
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .info-card {
+            background: var(--bg-light);
+            padding: 25px;
+            border-radius: var(--radius-card);
+            transition: var(--transition);
+            border: 1px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .info-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 5px;
+            height: 100%;
+            background: linear-gradient(to bottom, var(--primary), var(--primary-dark));
+            transition: width 0.3s ease;
+        }
+        
+        .info-card:hover {
+            transform: translateY(-5px);
+            box-shadow: var(--shadow-hover);
+            border-color: var(--primary);
+        }
+        
+        .info-card:hover::before {
+            width: 10px;
+        }
+        
+        .info-card h3 {
+            color: var(--text-primary);
+            margin-bottom: 15px;
+            font-size: 1.3em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .info-card p {
+            margin: 0;
+            font-size: 1.1em;
+            color: var(--text-secondary);
+        }
+        
+        .list-container {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+            display: grid;
+            gap: 15px;
+        }
+        
+        .list-item {
+            background: var(--bg-light);
+            padding: 20px;
+            border-radius: var(--radius-card);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            transition: var(--transition);
+            border-left: 4px solid transparent;
+        }
+        
+        .list-item:hover {
+            background: var(--bg-lighter);
+            border-left-color: var(--primary);
+            transform: translateX(5px);
+        }
+        
+        .list-item i {
+            color: var(--primary);
+            font-size: 1.3em;
+            width: 24px;
+            text-align: center;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            margin-top: 40px;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 14px 28px;
+            border: none;
+            border-radius: 50px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            text-decoration: none;
+            transition: var(--transition);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            min-width: 160px;
+            justify-content: center;
+        }
+        
+        .btn::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 100%);
+            transform: translateX(-100%);
+            transition: transform 0.5s ease;
+            z-index: -1;
+        }
+        
+        .btn:hover::after {
+            transform: translateX(100%);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: var(--secondary);
+            color: white;
+        }
+        
+        .btn-info {
+            background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 99%, #fad0c4 100%);
+            color: #2c3e50;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.25);
+        }
+        
+        .btn:active {
+            transform: translateY(-1px);
+        }
+        
+        .language-selector {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+        
+        .lang-btn {
+            background: rgba(255,255,255,0.9);
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: var(--transition);
+        }
+        
+        .lang-btn:hover {
+            background: var(--primary);
+            color: white;
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                padding: 25px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .section h2 {
+                font-size: 1.5em;
+            }
+            
+            .city-image-wrapper {
+                height: 200px;
+            }
+            
+            .info-grid {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+            
+            .btn {
+                min-width: 140px;
+                padding: 12px 20px;
+                font-size: 15px;
+            }
+            
+            .language-selector {
+                position: static;
+                margin-bottom: 20px;
+                text-align: center;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .city-image-wrapper {
+                height: 150px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 1.8em;
+            }
+            
+            .current-time {
+                font-size: 1em;
+                flex-direction: column;
+                gap: 5px;
+            }
+            
+            .btn-group {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <div class="language-selector">
+            {% if language == 'zh' %}
+            <a href="?language=en" class="lang-btn">English</a>
+            {% else %}
+            <a href="?language=zh" class="lang-btn">中文</a>
+            {% endif %}
+        </div>
+        
+        <h1><i class="fas fa-info-circle"></i> {{ place_data.name if place_data and 'name' in place_data else city }} {{ '简介' if language == 'zh' else 'Information' }}</h1>
+        
+        <div class="info-header">
+            <div class="current-time">
+                <span><i class="fas fa-calendar-alt"></i> {{ date_str }}</span>
+                <span><i class="fas fa-clock"></i> {{ time_str }}</span>
+                <span><i class="fas fa-calendar-day"></i> {{ weekday_str }}</span>
+                <span><i class="fas fa-map-marker-alt"></i> {{ location_info.latitude }}, {{ location_info.longitude }}</span>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2><i class="fas fa-map-marker-alt"></i> {{ '城市概述' if language == 'zh' else 'City Overview' }}</h2>
+            <p class="description">{{ place_data.description }}</p>
+            
+            <div class="info-grid">
+                <div class="info-card">
+                    <h3><i class="fas fa-users"></i> {{ '人口' if language == 'zh' else 'Population' }}</h3>
+                    <p>{{ place_data.population }}</p>
+                </div>
+                <div class="info-card">
+                    <h3><i class="fas fa-temperature-high"></i> {{ '气候' if language == 'zh' else 'Climate' }}</h3>
+                    <p>{{ place_data.climate }}</p>
+                </div>
+                <div class="info-card">
+                    <h3><i class="fas fa-location-arrow"></i> {{ '坐标' if language == 'zh' else 'Coordinates' }}</h3>
+                    <p>{{ location_info.latitude }}, {{ location_info.longitude }}</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2><i class="fas fa-landmark"></i> {{ '著名地点' if language == 'zh' else 'Famous Places' }}</h2>
+            <ul class="list-container">
+                {% for place in place_data.famous_places %}
+                <li class="list-item">
+                    <i class="fas fa-map-pin"></i>
+                    <span>{{ place }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        
+        <div class="section">
+            <h2><i class="fas fa-lightbulb"></i> {{ '城市特色' if language == 'zh' else 'City Facts' }}</h2>
+            <ul class="list-container">
+                {% for fact in place_data.facts %}
+                <li class="list-item">
+                    <i class="fas fa-check-circle"></i>
+                    <span>{{ fact }}</span>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        
+        <!-- 当前天气信息 -->
+        {% if current_weather %}
+        <div class="section">
+            <h2><i class="fas fa-cloud-sun"></i> {{ '当前天气' if language == 'zh' else 'Current Weather' }}</h2>
+            <div class="info-card">
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h3 style="margin-bottom: 10px;">{{ current_weather.text }}</h3>
+                        <p style="font-size: 1.3em; font-weight: bold;">{{ current_weather.temperature }}°C</p>
+                    </div>
+                    <div style="text-align: right;">
+                        <p><i class="fas fa-wind"></i> {{ current_weather.windspeed }} km/h</p>
+                        <p><i class="fas fa-compass"></i> {{ current_weather.winddirection }}°</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- 7天天气预报 -->
+        {% if seven_day_forecast %}
+        <div class="section">
+            <h2><i class="fas fa-calendar-week"></i> {{ '7天天气预报' if language == 'zh' else '7-Day Weather Forecast' }}</h2>
+            <div class="forecast-grid">
+                {% for day in seven_day_forecast %}
+                <div class="forecast-card">
+                    <div class="forecast-date">
+                        {% if language == 'zh' %}
+                        {{ day.date.strftime('%m-%d') }}
+                        {% else %}
+                        {{ day.date.strftime('%b %d') }}
+                        {% endif %}
+                    </div>
+                    <div class="forecast-weather">{{ day.text }}</div>
+                    <div class="forecast-temp">
+                        <span class="max-temp">{{ day.max_temp }}°</span>
+                        <span class="min-temp">{{ day.min_temp }}°</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- 24小时天气预报 -->
+        {% if hourly_forecast %}
+        <div class="section">
+            <h2><i class="fas fa-hourglass-half"></i> {{ '24小时天气预报' if language == 'zh' else '24-Hour Weather Forecast' }}</h2>
+            <div class="hourly-forecast-container">
+                {% for hour in hourly_forecast %}
+                <div class="hourly-card">
+                    <div class="hourly-time">
+                        {{ hour.time.strftime('%H:%M') }}
+                    </div>
+                    <div class="hourly-weather">{{ hour.text }}</div>
+                    <div class="hourly-temp">{{ hour.temperature }}°C</div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <div class="btn-group">
+            <a href="/weather" class="btn btn-primary"><i class="fas fa-cloud-sun"></i> {{ '详细天气' if language == 'zh' else 'Detailed Weather' }}</a>
+            <a href="/time" class="btn btn-primary"><i class="fas fa-clock"></i> {{ '查询时间' if language == 'zh' else 'Check Time' }}</a>
+            <button class="btn btn-info" onclick="refreshPage()"><i class="fas fa-sync-alt"></i> {{ '刷新信息' if language == 'zh' else 'Refresh Info' }}</button>
+            <a href="/" class="btn btn-secondary"><i class="fas fa-home"></i> {{ '返回首页' if language == 'zh' else 'Back to Home' }}</a>
+        </div>
+        
+        <script>
+            function refreshPage() {
+                // 添加刷新动画
+                const container = document.querySelector('.container');
+                if (container) {
+                    container.style.opacity = '0.7';
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 300);
+                }
+                return false; // 防止默认行为
+            }
+            
+            // 页面初始化
+            document.addEventListener('DOMContentLoaded', function() {
+                // 根据语言设置字体（在JavaScript中动态设置）
+                const htmlElement = document.documentElement;
+                const isChinese = htmlElement.lang === 'zh-CN';
+                
+                if (isChinese) {
+                    document.body.style.fontFamily = '"PingFang SC", "Microsoft YaHei", sans-serif';
+                } else {
+                    document.body.style.fontFamily = '"Inter", "Helvetica Neue", Arial, sans-serif';
+                }
+                
+                    // 图片功能已移除
+            
+            // 为卡片添加滚动动画
+                const cards = document.querySelectorAll('.info-card, .list-item');
+                
+                // 检查浏览器是否支持IntersectionObserver
+                if ('IntersectionObserver' in window) {
+                    const observer = new IntersectionObserver((entries) => {
+                        entries.forEach(entry => {
+                            if (entry.isIntersecting) {
+                                entry.target.style.opacity = '1';
+                                entry.target.style.transform = 'translateY(0)';
+                                observer.unobserve(entry.target); // 只观察一次
+                            }
+                        });
+                    }, { threshold: 0.1 });
+                    
+                    cards.forEach(card => {
+                        card.style.opacity = '0';
+                        card.style.transform = 'translateY(20px)';
+                        card.style.transition = 'opacity 0.6s ease, transform 0.6s ease';
+                        observer.observe(card);
+                    });
+                } else {
+                    // 浏览器不支持时的降级处理
+                    cards.forEach(card => {
+                        card.style.opacity = '1';
+                        card.style.transform = 'translateY(0)';
+                    });
+                }
+            });
+        </script>
+    </div>
+</body>
+</html>

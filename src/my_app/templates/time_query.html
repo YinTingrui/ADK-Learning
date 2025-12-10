@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>查询时间 - 智能旅行助手</title>
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 40px;
+            margin-top: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .time-form {
+            max-width: 600px;
+            margin: 0 auto 30px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            font-weight: 500;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        .time-result {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 25px;
+            background: #fff;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            border-left: 4px solid #667eea;
+        }
+        .time-result h2 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+        .time-result p {
+            margin: 10px 0;
+            color: #555;
+            font-size: 1.1em;
+        }
+        .time-result .time-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #667eea;
+            margin: 20px 0;
+            text-align: center;
+        }
+        .current-time {
+            max-width: 600px;
+            margin: 30px auto 0;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .current-time h3 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+        .current-time .time-value {
+            font-size: 1.5em;
+            color: #667eea;
+            font-weight: 500;
+        }
+        .note {
+            max-width: 600px;
+            margin: 30px auto 0;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            font-size: 0.9em;
+            color: #1565c0;
+            border-left: 4px solid #1976d2;
+        }
+        .error {
+            color: #e74c3c;
+            padding: 10px;
+            background: #ffebee;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            .time-form,
+            .time-result,
+            .current-time {
+                padding: 20px;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> 返回首页</a>
+        <h1><i class="fas fa-clock"></i> 查询时间</h1>
+        
+        <form id="time-form" class="time-form">
+            <div class="form-group">
+                <label for="location">输入城市或地区名称：</label>
+                <input type="text" id="location" name="location" placeholder="例如：北京、上海、纽约、伦敦" required>
+            </div>
+            <button type="submit" class="btn-primary">
+                <i class="fas fa-search"></i> 查询时间
+            </button>
+        </form>
+        
+        <div id="time-result" class="time-result" style="display: none;">
+            <h2 id="result-location"></h2>
+            <div id="result-time" class="time-value"></div>
+            <p id="result-date"></p>
+            <p id="result-timezone"></p>
+        </div>
+        
+        <div class="current-time">
+            <h3>您的本地时间：</h3>
+            <div id="local-time" class="time-value"></div>
+        </div>
+        
+        <div class="note">
+            <i class="fas fa-info-circle"></i> <strong>注意：</strong> 时间查询基于系统时区和IP地理位置，可能存在一定误差。请确保输入的城市名称准确。
+        </div>
+    </div>
+    <script>
+        // 更新本地时间
+        function updateLocalTime() {
+            const now = new Date();
+            const options = { 
+                weekday: 'long', 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric', 
+                hour: '2-digit', 
+                minute: '2-digit', 
+                second: '2-digit', 
+                hour12: false,
+                timeZoneName: 'short'
+            };
+            const localTimeStr = now.toLocaleString('zh-CN', options);
+            document.getElementById('local-time').textContent = localTimeStr;
+        }
+        
+        // 初始更新并设置定时器每秒更新本地时间
+        updateLocalTime();
+        setInterval(updateLocalTime, 1000);
+        
+        // 处理时间查询表单提交
+        document.getElementById('time-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const location = document.getElementById('location').value.trim();
+            if (!location) return;
+            
+            // 显示加载状态
+            const resultElement = document.getElementById('time-result');
+            resultElement.innerHTML = '<div class="loading">查询中，请稍候...</div>';
+            resultElement.style.display = 'block';
+            
+            // 这里应该发送请求到服务器获取指定地点的时间
+            // 目前使用模拟数据进行演示
+            setTimeout(function() {
+                // 模拟API响应
+                // 在实际应用中，这里应该替换为真实的API调用
+                // fetch('/api/time-query?location=' + encodeURIComponent(location))
+                //     .then(response => response.json())
+                //     .then(data => {
+                //         // 处理响应数据
+                //     })
+                
+                // 模拟数据
+                const mockData = {
+                    location: location,
+                    time: new Date().toLocaleTimeString('zh-CN', { hour12: false }),
+                    date: new Date().toLocaleDateString('zh-CN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+                    timezone: 'UTC+8'
+                };
+                
+                // 更新结果显示
+                document.getElementById('result-location').textContent = `${mockData.location} 时间`;
+                document.getElementById('result-time').textContent = mockData.time;
+                document.getElementById('result-date').textContent = mockData.date;
+                document.getElementById('result-timezone').textContent = `时区: ${mockData.timezone}`;
+                
+                // 为了模拟不同时区，可以根据location参数做一些简单处理
+                // 这只是为了演示，实际应用中应该通过API获取准确时区信息
+                if (location.toLowerCase().includes('纽约')) {
+                    const nyTime = new Date();
+                    nyTime.setHours(nyTime.getHours() - 13); // 大致模拟纽约时间
+                    document.getElementById('result-time').textContent = nyTime.toLocaleTimeString('zh-CN', { hour12: false });
+                    document.getElementById('result-timezone').textContent = '时区: UTC-5 (东部标准时间)';
+                } else if (location.toLowerCase().includes('伦敦')) {
+                    const londonTime = new Date();
+                    londonTime.setHours(londonTime.getHours() - 8); // 大致模拟伦敦时间
+                    document.getElementById('result-time').textContent = londonTime.toLocaleTimeString('zh-CN', { hour12: false });
+                    document.getElementById('result-timezone').textContent = '时区: UTC+0 (格林尼治标准时间)';
+                }
+            }, 1000); // 模拟网络延迟
+        });
+    </script>
+</body>
+</html>

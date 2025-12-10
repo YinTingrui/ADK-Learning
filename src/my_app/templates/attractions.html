@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>景点查询 - 智能旅行助手</title>
+    <style>
+        body {
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 40px;
+            margin-top: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 2.5em;
+        }
+        h2 {
+            text-align: center;
+            color: #2c3e50;
+            margin-bottom: 30px;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #34495e;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+        .form-group input:focus,
+        .form-group select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .attractions-result {
+            margin-top: 20px;
+        }
+        .attraction-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .attraction-card {
+            background: white;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease;
+            border: 1px solid #f0f0f0;
+        }
+        .attraction-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .attraction-name {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #2c3e50;
+            font-size: 1.1em;
+        }
+        .attraction-rating {
+            color: #f39c12;
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+        .error {
+            color: #e74c3c;
+            padding: 10px;
+            background: #ffebee;
+            border-radius: 5px;
+            margin: 10px 0;
+            text-align: center;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        button[type="submit"] {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            padding: 12px 25px;
+            font-size: 1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        button[type="submit"]:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.3);
+        }
+        .form-container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .typing-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .typing-indicator span {
+            width: 8px;
+            height: 8px;
+            background-color: #667eea;
+            border-radius: 50%;
+            margin: 0 2px;
+            animation: typing 1.4s infinite ease-in-out both;
+        }
+        .typing-indicator span:nth-child(1) {
+            animation-delay: -0.32s;
+        }
+        .typing-indicator span:nth-child(2) {
+            animation-delay: -0.16s;
+        }
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0); }
+            40% { transform: scale(1); }
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            h1 {
+                font-size: 2em;
+            }
+            .attraction-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-link"><i class="fas fa-arrow-left"></i> 返回首页</a>
+        <h1><i class="fas fa-route"></i> 智能旅行助手</h1>
+        <h2><i class="fas fa-map-marked-alt"></i> 景点查询</h2>
+        
+        <div class="form-container">
+            <form id="attractions-form">
+                <div class="form-group">
+                    <label for="attraction-city">城市名称</label>
+                    <input type="text" id="attraction-city" name="attraction-city" placeholder="例如：北京、上海、杭州" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="attraction-limit">显示数量</label>
+                    <select id="attraction-limit" name="attraction-limit">
+                        <option value="5">5个</option>
+                        <option value="10" selected>10个</option>
+                        <option value="15">15个</option>
+                        <option value="20">20个</option>
+                    </select>
+                </div>
+                <button type="submit">查询景点</button>
+            </form>
+
+            <div id="attractions-result" style="display: none;">
+                <h3 id="attractions-title"></h3>
+                <div id="attractions-grid" class="attraction-grid"></div>
+            </div>
+
+            <div id="loading" class="loading" style="display: none;">
+                <div style="text-align: center; padding: 20px;">
+                    <h3>正在查询景点信息...</h3>
+                    <div style="margin: 20px 0;">
+                        <div class="typing-indicator">
+                            <span></span><span></span><span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        // 查询景点
+        document.getElementById('attractions-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const city = document.getElementById('attraction-city').value;
+            const limit = document.getElementById('attraction-limit').value;
+            
+            // 表单验证
+            if (!city) {
+                alert('请输入城市名称');
+                return;
+            }
+            
+            // 显示加载状态
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('attractions-result').style.display = 'none';
+            
+            // 发送请求
+            fetch(`/api/attractions?city=${encodeURIComponent(city)}&limit=${limit}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('loading').style.display = 'none';
+                
+                if (data.status === 'success') {
+                    // 显示结果
+                    document.getElementById('attractions-result').style.display = 'block';
+                    document.getElementById('attractions-title').textContent = `${city}的热门景点`;
+                    
+                    // 填充景点网格
+                    const grid = document.getElementById('attractions-grid');
+                    grid.innerHTML = '';
+                    
+                    if (data.attractions && data.attractions.length > 0) {
+                        data.attractions.forEach(attraction => {
+                            const card = document.createElement('div');
+                            card.className = 'attraction-card';
+                            card.innerHTML = `
+                                <div class="attraction-name">${attraction.name || '未知景点'}</div>
+                                <div class="attraction-rating">⭐ ${attraction.rating || '暂无评分'}</div>
+                                <div>${attraction.description || '暂无描述'}</div>
+                            `;
+                            grid.appendChild(card);
+                        });
+                    } else {
+                        grid.innerHTML = '暂无景点信息';
+                    }
+                } else {
+                    document.getElementById('attractions-result').style.display = 'block';
+                    document.getElementById('attractions-result').innerHTML = `
+                        <div class="error">
+                            <strong>错误：</strong>${data.message || '查询景点失败'}
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('attractions-result').style.display = 'block';
+                document.getElementById('attractions-result').innerHTML = `
+                    <div class="error">
+                        <strong>错误：</strong>网络错误，请稍后再试
+                    </div>
+                `;
+            });
+        });
+    </script>
+</body>
+</html>
